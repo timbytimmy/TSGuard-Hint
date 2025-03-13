@@ -1,5 +1,8 @@
 #### Time series algebra expression mapping rules.
 
+!!! Please download the text for local viewing.
+
+
 |  ID  | SQL expression                    | Time Series Algebra                | Explanation                              |
 | :--: | --------------------------------- | ---------------------------------- | ---------------------------------------- |
 |  1   | $$ T < c $$                       | $T_{vc} =\{ (t,v)|t∈T,v∈(-∞,c) \}$ | Select elements in T where values are < c. |

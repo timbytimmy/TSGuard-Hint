@@ -1,6 +1,6 @@
 #### Time series algebra expression mapping rules.
 
-!!! Please download the text for local viewing.
+!!! Please download the text to view it locally.
 
 
 |  ID  | SQL expression                    | Time Series Algebra                | Explanation                              |

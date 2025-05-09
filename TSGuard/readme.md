@@ -2,6 +2,7 @@ Minimum Requirements:
 
 - Java 8 or above
 - Maven
+- Lombok
 - InfluxDB: 2.7.11 or earlier
 - IotDB: 1.3.3 or earlier
 - TDengine: 3.3.4.8 or earlier

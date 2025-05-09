@@ -1,0 +1,28 @@
+# log files
+*.log
+*.log*
+
+# include log.properties
+!log.properties
+
+# java
+*.class
+
+# maven ignore
+target/
+*/target/
+.idea/
+lib/*.jar
+release/
+
+*/target
+out
+target
+.DS_Store
+
+flyway
+logs/
+*/*.iml
+*.iml
+*/*.jar
+/lib/

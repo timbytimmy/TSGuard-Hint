@@ -1,0 +1,5 @@
+com.fuzzy.influxdb.InfluxDBProvider
+com.fuzzy.iotdb.IotDBProvider
+com.fuzzy.prometheus.PrometheusProvider
+com.fuzzy.TDengine.TDengineProvider
+com.fuzzy.griddb.GridDBProvider

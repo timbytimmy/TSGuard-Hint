@@ -6,10 +6,9 @@ import com.fuzzy.common.query.ExpectedErrors;
 import com.fuzzy.common.query.SQLQueryAdapter;
 import com.fuzzy.prometheus.PrometheusGlobalState;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusTable;
-import com.fuzzy.prometheus.apiEntry.entity.CollectorAttribute;
 import com.fuzzy.prometheus.apiEntry.PrometheusInsertParam;
 import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
-import io.prometheus.client.CollectorRegistry;
+import com.fuzzy.prometheus.apiEntry.entity.CollectorAttribute;
 
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -45,7 +44,7 @@ public class PrometheusInsertGenerator {
             attribute.setDataType(column.getType());
             attribute.setMetricName(column.getName());
             attribute.setHelp(String.format("%s.%s.%s", table.getDatabaseName(), table.getName(), column.getName()));
-            attribute.setDatabaseName(table.getDatabaseName());
+//            attribute.setDatabaseName(table.getDatabaseName());
             attribute.setTableName(table.getName());
             attribute.randomInitValue(globalState.getRandomly());
             collectorMap.put(column.getName(), attribute);

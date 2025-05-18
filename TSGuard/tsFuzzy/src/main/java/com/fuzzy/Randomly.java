@@ -596,7 +596,7 @@ public final class Randomly {
 
     // see https://stackoverflow.com/a/2546158
     // uniformity does not seem to be important for us
-    // SQLancer previously used ThreadLocalRandom.current().nextLong(lower, upper)
+    // TSGuard previously used ThreadLocalRandom.current().nextLong(lower, upper)
     private static long getNextLong(long lower, long upper) {
         if (lower > upper) {
             throw new IllegalArgumentException(lower + " " + upper);

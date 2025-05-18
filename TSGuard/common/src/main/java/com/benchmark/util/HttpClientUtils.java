@@ -3,11 +3,10 @@ package com.benchmark.util;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
+import org.apache.http.client.methods.*;
+import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
@@ -98,6 +97,72 @@ public class HttpClientUtils {
             log.error("发送POST请求失败, e:", e);
         }
         return result;
+    }
+
+    public static String post(String url, byte[] data, Map<String, String> headers) {
+        // 创建HttpClient实例
+        String result = "";
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            // 创建POST请求对象
+            HttpPost httpPost = new HttpPost(url);
+
+            // 包装二进制数据为请求实体
+            ByteArrayEntity entity = new ByteArrayEntity(data);
+
+            // 设置关键请求头（根据实际需求调整）
+            httpPost.setEntity(entity);
+
+            // 可选：添加其他自定义Header
+            httpPost.setHeader("Authorization", "Bearer your_token_here");
+            for (Map.Entry<String, String> entry : headers.entrySet()) {
+                httpPost.setHeader(entry.getKey(), entry.getValue());
+            }
+
+            // 执行请求并获取响应
+            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                // 处理响应状态码
+                int statusCode = response.getStatusLine().getStatusCode();
+
+                // 处理响应内容
+                if (statusCode >= 200 && statusCode < 300) {
+                    HttpEntity responseEntity = response.getEntity();
+                    result = String.format("status: %s", statusCode);
+                    if (responseEntity != null)
+                        result += EntityUtils.toString(responseEntity);
+                } else {
+                    result = String.format("Request failed with status code: %s\n res:%s", statusCode, response);
+                }
+            }
+        } catch (Exception e) {
+            log.error("发送POST请求失败, e:", e);
+        }
+        return result;
+    }
+
+    public static boolean sendPointDataToDB(String url, byte[] data, Map<String, String> headers) {
+        try {
+            URL realUrl = new URL(url);
+            URLConnection conn = realUrl.openConnection();
+            headers.entrySet().forEach(header -> conn.setRequestProperty(header.getKey(), header.getValue()));
+            conn.setRequestProperty("accept", "*/*");
+            conn.setDoOutput(true);
+            conn.setDoInput(true);
+            // fill and send content
+            DataOutputStream dos = new DataOutputStream(conn.getOutputStream());
+            dos.write(data);
+            dos.flush();
+            // get response (Do not comment this line, or the data insertion will be failed)
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+//            String line;
+//            while ((line = in.readLine()) != null) {
+//                result += line;
+//            }
+//            System.out.println(result);
+            return true;
+        } catch (Exception e) {
+            log.error("发送错误, e:", e);
+            return false;
+        }
     }
 
     /*private static String post(String url, String data, Map<String, String> heads) {

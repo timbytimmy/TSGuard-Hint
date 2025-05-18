@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class GridDBTSAFOracle
-        extends TimeSeriesAlgebraFrameworkBase<GridDBGlobalState, GridDBRowValue, GridDBExpression, SQLConnection> {
+        extends TimeSeriesAlgebraFrameworkBase<GridDBGlobalState, GridDBExpression, SQLConnection> {
     // TODO 插入数据空间概率分布
     // 数值和时间戳具备二元函数关系（能否知微见著，反映出各种不规律数值空间？）
     // 预期结果集由两者得出

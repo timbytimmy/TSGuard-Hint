@@ -511,7 +511,7 @@ public final class Main {
             commandBuilder = commandBuilder.addCommand(name, executorFactory.getCommand());
             nameToProvider.put(name, executorFactory);
         }
-        JCommander jc = commandBuilder.programName("SQLancer").build();
+        JCommander jc = commandBuilder.programName("TSGuard").build();
         jc.parse(args);
 
         if (jc.getParsedCommand() == null || options.isHelp()) {
@@ -558,8 +558,7 @@ public final class Main {
                         .testConnection();
             } catch (Exception e) {
                 System.err.println(
-                        "SQLancer failed creating a test database, indicating that SQLancer might have failed connecting to the DBMS. In order to change the username, password, host and port, you can use the --username, --password, --host and --port options.\n\n");
-                e.printStackTrace();
+                        "failed creating a test database, indicating that might have failed connecting to the DBMS. In order to change the username, password, host and port, you can use the --username, --password, --host and --port options.\n\n");
                 return options.getErrorExitCode();
             }
         }
@@ -710,7 +709,7 @@ public final class Main {
     /**
      * To register a new provider, it is necessary to implement the DatabaseProvider interface and add an additional
      * configuration file, see https://docs.oracle.com/javase/9/docs/api/java/util/ServiceLoader.html. Currently, we use
-     * an @AutoService annotation to create the configuration file automatically. This allows SQLancer to pick up
+     * an @AutoService annotation to create the configuration file automatically. This allows TSGuard to pick up
      * providers in other JARs on the classpath.
      *
      * @return The list of service providers on the classpath
@@ -722,41 +721,7 @@ public final class Main {
         for (DatabaseProvider<?, ?, ?> provider : loader) {
             providers.add(provider);
         }
-        checkForIssue799(providers);
         return providers;
-    }
-
-    // see https://github.com/sqlancer/sqlancer/issues/799
-    private static void checkForIssue799(List<DatabaseProvider<?, ?, ?>> providers) {
-        if (providers.isEmpty()) {
-            System.err.println(
-                    "No DBMS implementations (i.e., instantiations of the DatabaseProvider class) were found. You likely ran into an issue described in https://github.com/sqlancer/sqlancer/issues/799. As a workaround, I now statically load all supported providers as of June 7, 2023.");
-            // TODO
-//            providers.add(new ArangoDBProvider());
-//            providers.add(new CitusProvider());
-//            providers.add(new ClickHouseProvider());
-//            providers.add(new CnosDBProvider());
-//            providers.add(new CockroachDBProvider());
-//            providers.add(new CosmosProvider());
-//            providers.add(new DatabendProvider());
-//            providers.add(new DorisProvider());
-//            providers.add(new DuckDBProvider());
-//            providers.add(new H2Provider());
-//            providers.add(new HSQLDBProvider());
-//            providers.add(new MariaDBProvider());
-//            providers.add(new MaterializeProvider());
-//            providers.add(new MongoDBProvider());
-//            providers.add(new MySQLProvider());
-//            providers.add(new OceanBaseProvider());
-//            providers.add(new PostgresProvider());
-//            providers.add(new QuestDBProvider());
-//            providers.add(new SQLite3Provider());
-//            providers.add(new StoneDBProvider());
-//            providers.add(new TiDBProvider());
-//            providers.add(new TimescaleDBProvider());
-//            providers.add(new YCQLProvider());
-//            providers.add(new YSQLProvider());
-        }
     }
 
     private static synchronized void startProgressMonitor() {

@@ -91,6 +91,7 @@ public class PrometheusProvider extends SQLProviderAdapter<PrometheusGlobalState
 
         PrometheusConnection prometheusConnection = new PrometheusConnection(host, port);
         try (PrometheusStatement s = prometheusConnection.createStatement()) {
+            // example: databaseName{tableName="t0", seriesName="s0"} 10 1745510400000
             String databaseMatch = String.format("match[]={database=\"%s\"}", databaseName);
             PrometheusResultSet prometheusResultSet =
                     (PrometheusResultSet) s.executeQuery(JSONObject.toJSONString(new PrometheusQueryParam(

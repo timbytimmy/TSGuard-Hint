@@ -11,7 +11,6 @@ import com.fuzzy.prometheus.PrometheusSchema.PrometheusDataType;
 import com.fuzzy.prometheus.apiEntry.PrometheusInsertParam;
 import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
 import com.fuzzy.prometheus.apiEntry.entity.CollectorAttribute;
-import com.fuzzy.prometheus.constant.PrometheusLabelConstant;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,7 +46,7 @@ public class PrometheusTableGenerator {
             attribute.setDataType(PrometheusDataType.getRandom(globalState));
             attribute.setMetricName(columnName);
             attribute.setHelp(String.format("%s.%s.%s", globalState.getDatabaseName(), tableName, columnName));
-            attribute.setDatabaseName(globalState.getDatabaseName());
+//            attribute.setDatabaseName(globalState.getDatabaseName());
             attribute.setTableName(tableName);
             attribute.randomInitValue(r);
             collectorMap.put(attribute.getMetricName(), attribute);

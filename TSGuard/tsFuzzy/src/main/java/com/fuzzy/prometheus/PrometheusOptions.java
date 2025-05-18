@@ -16,10 +16,10 @@ import java.util.List;
         + ", default host: " + PrometheusOptions.DEFAULT_HOST + ")")
 public class PrometheusOptions implements DBMSSpecificOptions<PrometheusOracleFactory> {
     public static final String DEFAULT_HOST = "localhost";
-    public static final int DEFAULT_PORT = 9990;
+    public static final int DEFAULT_PORT = 9090;
 
     @Parameter(names = "--oracle")
-    public List<PrometheusOracleFactory> oracles = Arrays.asList(PrometheusOracleFactory.PQS);
+    public List<PrometheusOracleFactory> oracles = Arrays.asList(PrometheusOracleFactory.TSAF);
 
     public enum PrometheusOracleFactory implements OracleFactory<PrometheusGlobalState> {
 
@@ -29,7 +29,18 @@ public class PrometheusOptions implements DBMSSpecificOptions<PrometheusOracleFa
             public TestOracle<PrometheusGlobalState> create(PrometheusGlobalState globalState) throws SQLException {
                 return new PrometheusPivotedQuerySynthesisOracle(globalState);
             }
+            @Override
+            public boolean requiresAllTablesToContainRows() {
+                return true;
+            }
 
+        },
+        TSAF {
+
+            @Override
+            public TestOracle<PrometheusGlobalState> create(PrometheusGlobalState globalState) throws SQLException {
+                return new PrometheusPivotedQuerySynthesisOracle(globalState);
+            }
             @Override
             public boolean requiresAllTablesToContainRows() {
                 return true;

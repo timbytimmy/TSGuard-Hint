@@ -8,5 +8,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class PrometheusRequestParam {
+    // 请求参数类型
     private PrometheusRequestType type;
+    // 参数体
+    private String body;
 }

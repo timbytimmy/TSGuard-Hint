@@ -1,6 +1,5 @@
 package com.fuzzy.prometheus.gen;
 
-import com.alibaba.fastjson.JSONObject;
 import com.fuzzy.Randomly;
 import com.fuzzy.common.DBMSCommon;
 import com.fuzzy.common.query.ExpectedErrors;
@@ -9,7 +8,6 @@ import com.fuzzy.prometheus.PrometheusGlobalState;
 import com.fuzzy.prometheus.PrometheusSchema;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusDataType;
 import com.fuzzy.prometheus.apiEntry.PrometheusInsertParam;
-import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
 import com.fuzzy.prometheus.apiEntry.entity.CollectorAttribute;
 
 import java.util.ArrayList;
@@ -44,22 +42,22 @@ public class PrometheusTableGenerator {
             String columnName = genColumn(i);
             CollectorAttribute attribute = new CollectorAttribute();
             attribute.setDataType(PrometheusDataType.getRandom(globalState));
-            attribute.setMetricName(columnName);
+            attribute.setMetricName(globalState.getDatabaseName());
             attribute.setHelp(String.format("%s.%s.%s", globalState.getDatabaseName(), tableName, columnName));
 //            attribute.setDatabaseName(globalState.getDatabaseName());
             attribute.setTableName(tableName);
+            attribute.setTimeSeriesName(columnName);
             attribute.randomInitValue(r);
             collectorMap.put(attribute.getMetricName(), attribute);
         }
 
         PrometheusInsertParam insertParam = new PrometheusInsertParam();
-        insertParam.setType(PrometheusRequestType.push_data);
         insertParam.setCollectorList(collectorMap);
-        return new SQLQueryAdapter(JSONObject.toJSONString(insertParam), errors, true);
+        return new SQLQueryAdapter(insertParam.genPrometheusQueryParam(), errors, true);
     }
 
     private String genColumn(int columnId) {
-        String columnName = DBMSCommon.createColumnName(columnId, globalState.getDatabaseName(), tableName);
+        String columnName = DBMSCommon.createColumnName(columnId);
         columns.add(columnName);
         return columnName;
     }

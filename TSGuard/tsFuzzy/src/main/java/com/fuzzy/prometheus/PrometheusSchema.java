@@ -6,7 +6,6 @@ import com.benchmark.commonClass.TSFuzzyStatement;
 import com.fuzzy.Randomly;
 import com.fuzzy.SQLConnection;
 import com.fuzzy.common.schema.*;
-import com.fuzzy.prometheus.PrometheusSchema.PrometheusTable;
 import com.fuzzy.prometheus.apiEntry.PrometheusQueryParam;
 import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
 import com.fuzzy.prometheus.apiEntry.entity.PrometheusSeriesResultItem;
@@ -16,11 +15,9 @@ import com.fuzzy.prometheus.resultSet.PrometheusResultSet;
 import com.fuzzy.prometheus.util.WaitPrometheusScrapeData;
 
 import java.sql.SQLException;
-import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.*;
-import java.util.stream.Collectors;
 
-public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, PrometheusTable> {
+public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, PrometheusSchema.PrometheusTable> {
 
     private static final int NR_SCHEMA_READ_TRIES = 10;
 
@@ -28,7 +25,7 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
         COUNTER, GAUGE, HISTOGRAM, SUMMARY;
 
         public static PrometheusDataType getRandom(PrometheusGlobalState globalState) {
-            if (globalState.usesPQS()) {
+            if (globalState.usesPQS() || globalState.usesTSAF()) {
                 return Randomly.fromOptions(PrometheusDataType.COUNTER, PrometheusDataType.GAUGE);
             } else {
                 return Randomly.fromOptions(values());
@@ -105,9 +102,9 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
                     String databaseMatch = String.format("match[]={database=\"%s\"}", databaseName);
                     // 查询数据库结构
                     try (PrometheusResultSet prometheusResultSet = (PrometheusResultSet)
-                            s.executeQuery(JSONObject.toJSONString(new PrometheusQueryParam(
-                                    PrometheusRequestType.series_query, databaseMatch,
-                                    System.currentTimeMillis() / 1000)))) {
+                            s.executeQuery(new PrometheusQueryParam(databaseMatch,
+                                    System.currentTimeMillis() / 1000)
+                                    .genPrometheusRequestParam(PrometheusRequestType.SERIES_QUERY))) {
 
                         // 将获取数据按照<database, table, column>去重
                         Set<PrometheusSeriesResultItem> seriesSet = new HashSet<>();
@@ -127,8 +124,7 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
                         seriesSet.forEach(item -> {
                             if (tableToSeriesMap.containsKey(item.getTable())) {
                                 tableToSeriesMap.get(item.getTable()).add(item.transToColumn());
-                            }
-                            else {
+                            } else {
                                 List<PrometheusColumn> items = new ArrayList<>();
                                 items.add(item.transToColumn());
                                 tableToSeriesMap.put(item.getTable(), items);

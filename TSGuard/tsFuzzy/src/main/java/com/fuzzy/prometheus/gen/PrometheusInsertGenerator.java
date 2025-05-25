@@ -1,13 +1,11 @@
 package com.fuzzy.prometheus.gen;
 
 
-import com.alibaba.fastjson.JSONObject;
 import com.fuzzy.common.query.ExpectedErrors;
 import com.fuzzy.common.query.SQLQueryAdapter;
 import com.fuzzy.prometheus.PrometheusGlobalState;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusTable;
 import com.fuzzy.prometheus.apiEntry.PrometheusInsertParam;
-import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
 import com.fuzzy.prometheus.apiEntry.entity.CollectorAttribute;
 
 import java.sql.SQLException;
@@ -51,9 +49,8 @@ public class PrometheusInsertGenerator {
         });
 
         PrometheusInsertParam insertParam = new PrometheusInsertParam();
-        insertParam.setType(PrometheusRequestType.push_data);
         insertParam.setCollectorList(collectorMap);
-        return new SQLQueryAdapter(JSONObject.toJSONString(insertParam), errors);
+        return new SQLQueryAdapter(insertParam.genPrometheusQueryParam(), errors);
     }
 
 }

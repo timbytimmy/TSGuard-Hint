@@ -97,42 +97,44 @@ public class PrometheusPushClient {
     }
 
     @Test
-    public void testPrometheusInsertParam() throws IOException {
+    public void testPrometheusInsertParam() throws IOException, InterruptedException {
+        // TODO 不同时序之间不共享时间戳进度，但是应该有阈值要求回填不能超过多少范围
+        // TODO Prometheus 数据采样：当前值往前推 30s，将
         CollectorAttribute collectorAttribute = new CollectorAttribute();
-        String metricName = "db11";
+        String metricName = "db0";
         collectorAttribute.setMetricName(metricName);
-        collectorAttribute.setTableName("t2");
-        collectorAttribute.setTimeSeriesName("ts0");
+        collectorAttribute.setTableName("t0");
+        collectorAttribute.setTimeSeriesName("ts8");
         collectorAttribute.getDoubleValues().add(40.0);
         collectorAttribute.getDoubleValues().add(41.0);
-        collectorAttribute.getTimestamps().add(System.currentTimeMillis() - 10000);
-        collectorAttribute.getTimestamps().add(System.currentTimeMillis());
+        collectorAttribute.getTimestamps().add(1748136859175L);
+        collectorAttribute.getTimestamps().add(1748136858175L);
 
         Map<String, String> labels = new HashMap<>();
         labels.put("label", "val");
-        String metricName0 = "db10";
+        String metricName0 = "db1";
         CollectorAttribute collectorAttribute0 = new CollectorAttribute();
         collectorAttribute0.setMetricName(metricName0);
         collectorAttribute0.setTableName("t1");
-        collectorAttribute0.setTimeSeriesName("ts1");
+        collectorAttribute0.setTimeSeriesName("ts8");
         collectorAttribute0.setLabels(labels);
         collectorAttribute0.getDoubleValues().add(40.0);
         collectorAttribute0.getDoubleValues().add(41.0);
-        collectorAttribute0.getTimestamps().add(1747557881000L);
-        collectorAttribute0.getTimestamps().add(1747557891000L);
+        collectorAttribute0.getTimestamps().add(1748136859175L);
+        collectorAttribute0.getTimestamps().add(1748136858175L);
 
         PrometheusInsertParam insertParam = new PrometheusInsertParam();
         insertParam.getCollectorList().put(metricName, collectorAttribute);
         insertParam.getCollectorList().put(metricName0, collectorAttribute0);
         byte[] compressed = insertParam.snappyCompressedRequest(metricName);
-        byte[] compressed2 = insertParam.snappyCompressedRequest(metricName);
+        byte[] compressed2 = insertParam.snappyCompressedRequest(metricName0);
 
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/x-protobuf;proto=io.prometheus.write.v2.Request");
         headers.put("Content-Encoding", "snappy");
         headers.put("X-Prometheus-Remote-Write-Version", "2.0.0");
         boolean res = HttpClientUtils.sendPointDataToDB(ENDPOINT_URL, compressed, headers);
-//        boolean res2 = HttpClientUtils.sendPointDataToDB(ENDPOINT_URL, compressed2, headers);
+        boolean res2 = HttpClientUtils.sendPointDataToDB(ENDPOINT_URL, compressed2, headers);
     }
 
     @Test

@@ -45,31 +45,32 @@ public class PrometheusStatement implements TSFuzzyStatement {
     public void execute(String queryParam) throws SQLException {
         try {
             PrometheusRequestParam requestParam = JSONObject.parseObject(queryParam, PrometheusRequestParam.class);
-            if (requestParam.getType().isPushData()) {
-//                insertByPushGateway(queryParam);
-                insertByRemoteWrite(queryParam);
-            }
-
-            PrometheusQueryParam param = JSONObject.parseObject(queryParam, PrometheusQueryParam.class);
-            switch (param.getType()) {
-                case series_delete:
+            switch (requestParam.getType()) {
+                case PUSH_DATA:
+                    insertByRemoteWrite(requestParam.getBody());
+                    break;
+                case SERIES_DELETE:
+                    PrometheusQueryParam seriesDeleteParam = JSONObject.parseObject(requestParam.getBody(),
+                            PrometheusQueryParam.class);
                     SeriesDeleteBuilder deleteBuilder =
                             QueryBuilderType.SeriesDelete.newInstance(apiEntry.getTargetServer());
-                    URI targetUri = deleteBuilder.withSelector(param.getRequestBody()).build();
+                    URI targetUri = deleteBuilder.withSelector(seriesDeleteParam.getRequestBody()).build();
                     this.apiEntry.executePostRequest(targetUri);
                     CleanTombstonesBuilder cleanTombstonesBuilder =
                             QueryBuilderType.CleanTombstones.newInstance(apiEntry.getTargetServer());
                     this.apiEntry.executePostRequest(cleanTombstonesBuilder.build());
-                    return;
-                case push_gateway_series_delete:
+                    break;
+                case PUSH_GATEWAY_SERIES_DELETE:
+                    PrometheusQueryParam deleteParam = JSONObject.parseObject(requestParam.getBody(),
+                            PrometheusQueryParam.class);
                     PushGatewaySeriesDeleteBuilder pushGatewaySeriesDeleteBuilder =
                             QueryBuilderType.PushGatewaySeriesDelete.newInstance(apiEntry.getPushGatewayServer());
                     this.apiEntry.executeDeleteRequest(pushGatewaySeriesDeleteBuilder
-                            .withJobName(param.getRequestBody()).build());
-                    return;
+                            .withJobName(deleteParam.getRequestBody()).build());
+                    break;
                 default:
                     throw new IllegalArgumentException(String.format("查询参数类型不存在, type:%s",
-                            param.getType()));
+                            requestParam.getType()));
             }
         } catch (Exception e) {
             log.error("执行操作失败, e:", e);
@@ -86,18 +87,18 @@ public class PrometheusStatement implements TSFuzzyStatement {
                 throw new UnsupportedOperationException();
             }
 
-            PrometheusQueryParam param = JSONObject.parseObject(queryParam, PrometheusQueryParam.class);
+            PrometheusQueryParam param = JSONObject.parseObject(requestParam.getBody(), PrometheusQueryParam.class);
             URI targetUri;
             // 依据查询参数调用不同接口请求
-            switch (param.getType()) {
-                case series_query:
+            switch (requestParam.getType()) {
+                case SERIES_QUERY:
                     SeriesMetaQueryBuilder queryBuilder =
                             QueryBuilderType.SeriesMetadaQuery.newInstance(apiEntry.getTargetServer());
                     if (param.getStart() != null) queryBuilder.withStartEpochTime(param.getStart());
                     if (param.getEnd() != null) queryBuilder.withEndEpochTime(param.getEnd());
                     targetUri = queryBuilder.withSelector(param.getRequestBody()).build();
                     break;
-                case push_gateway_series_query:
+                case PUSH_GATEWAY_SERIES_QUERY:
                     PushGatewaySeriesQueryBuilder pushGatewaySeriesQueryBuilder =
                             QueryBuilderType.PushGatewaySeriesQuery.newInstance(apiEntry.getPushGatewayServer());
                     targetUri = pushGatewaySeriesQueryBuilder.build();
@@ -109,7 +110,7 @@ public class PrometheusStatement implements TSFuzzyStatement {
 //                    break;
                 default:
                     throw new IllegalArgumentException(String.format("查询参数类型不存在, type:%s",
-                            param.getType()));
+                            requestParam.getType()));
             }
             return new PrometheusResultSet(this.apiEntry.executeGetRequest(targetUri));
         } catch (Exception e) {
@@ -124,21 +125,21 @@ public class PrometheusStatement implements TSFuzzyStatement {
         PrometheusInsertParam param = JSONObject.parseObject(queryParam, PrometheusInsertParam.class);
         PushGateway pushGateway = new PushGateway(apiEntry.getPushGatewaySocket());
         for (Entry<String, CollectorAttribute> entry : param.getCollectorList().entrySet()) {
-            pushGateway.push(entry.getValue().transToCollector(), entry.getKey());
+//            pushGateway.push(entry.getValue().transToCollector(), entry.getKey());
         }
         // 休眠1s, 等待Prometheus抓取
         WaitPrometheusScrapeData.waitPrometheusScrapeData();
     }
 
-    private void insertByRemoteWrite(String queryParam) throws IOException {
-        PrometheusInsertParam param = JSONObject.parseObject(queryParam, PrometheusInsertParam.class);
+    private void insertByRemoteWrite(String insertParam) throws IOException {
+        PrometheusInsertParam param = JSONObject.parseObject(insertParam, PrometheusInsertParam.class);
         String url = apiEntry.getTargetServer() + "/api/v1/write";
         Map<String, String> headers = new HashMap<>();
         headers.put("Content-Type", "application/x-protobuf;proto=io.prometheus.write.v2.Request");
         headers.put("Content-Encoding", "snappy");
         headers.put("X-Prometheus-Remote-Write-Version", "2.0.0");
 
-        // TODO remote write error: out of order sample
+        // remote write
         for (String metricName : param.getCollectorList().keySet()) {
             byte[] compressed = param.snappyCompressedRequest(metricName);
             assert HttpClientUtils.sendPointDataToDB(url, compressed, headers);

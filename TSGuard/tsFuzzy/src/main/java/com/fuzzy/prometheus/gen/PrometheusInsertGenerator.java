@@ -1,15 +1,24 @@
 package com.fuzzy.prometheus.gen;
 
 
+import com.fuzzy.Randomly;
 import com.fuzzy.common.query.ExpectedErrors;
 import com.fuzzy.common.query.SQLQueryAdapter;
+import com.fuzzy.common.tsaf.EquationsManager;
+import com.fuzzy.common.tsaf.TSAFDataType;
+import com.fuzzy.common.tsaf.samplingfrequency.SamplingFrequency;
+import com.fuzzy.common.tsaf.samplingfrequency.SamplingFrequencyManager;
 import com.fuzzy.prometheus.PrometheusGlobalState;
+import com.fuzzy.prometheus.PrometheusSchema;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusTable;
 import com.fuzzy.prometheus.apiEntry.PrometheusInsertParam;
 import com.fuzzy.prometheus.apiEntry.entity.CollectorAttribute;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PrometheusInsertGenerator {
@@ -19,9 +28,20 @@ public class PrometheusInsertGenerator {
     private final ExpectedErrors errors = new ExpectedErrors();
     private final PrometheusGlobalState globalState;
 
+    // database_table -> randomGenTime
+    private static Map<String, Boolean> isRandomlyGenerateTimestamp = new HashMap<>();
+    // database_table -> lastTimestamp
+    private static Map<String, Long> lastTimestamp = new HashMap<>();
+
     public PrometheusInsertGenerator(PrometheusGlobalState globalState, PrometheusTable table) {
         this.globalState = globalState;
         this.table = table;
+        String hashKey = generateHashKey(globalState.getDatabaseName(), table.getName());
+        if (!isRandomlyGenerateTimestamp.containsKey(hashKey)) {
+            if (globalState.usesTSAF()) isRandomlyGenerateTimestamp.put(hashKey, false);
+            else isRandomlyGenerateTimestamp.put(hashKey, Randomly.getBoolean());
+            lastTimestamp.put(hashKey, globalState.getOptions().getStartTimestampOfTSData());
+        }
     }
 
     public static SQLQueryAdapter insertRow(PrometheusGlobalState globalState) throws SQLException {
@@ -34,23 +54,64 @@ public class PrometheusInsertGenerator {
     }
 
     private SQLQueryAdapter generateInsert() {
-        // 仅支持插入最新数据进行覆盖, 将以历史数据作为行数据
-        Map<String, CollectorAttribute> collectorMap = new HashMap<>();
-
-        table.getRandomNonEmptyColumnSubset().forEach(column -> {
-            CollectorAttribute attribute = new CollectorAttribute();
-            attribute.setDataType(column.getType());
-            attribute.setMetricName(column.getName());
-            attribute.setHelp(String.format("%s.%s.%s", table.getDatabaseName(), table.getName(), column.getName()));
-//            attribute.setDatabaseName(table.getDatabaseName());
-            attribute.setTableName(table.getName());
-            attribute.randomInitValue(globalState.getRandomly());
-            collectorMap.put(column.getName(), attribute);
-        });
-
         PrometheusInsertParam insertParam = new PrometheusInsertParam();
-        insertParam.setCollectorList(collectorMap);
+
+        // TODO 写接口，取出全部时间戳及数据值，一一验证正确性，从 Prometheus 页面可视化大图中初步看无问题
+        if (globalState.usesTSAF()) {
+            insertParam.setCollectorList(generateInsertForTSAF());
+        } else {
+
+        }
+
         return new SQLQueryAdapter(insertParam.genPrometheusQueryParam(), errors);
     }
 
+    private Map<String, CollectorAttribute> generateInsertForTSAF() {
+        String databaseName = globalState.getDatabaseName();
+        String tableName = table.getName();
+        String databaseAndTableName = generateHashKey(databaseName, tableName);
+        int nrRows = (int) PrometheusTableGenerator.SAMPLING_NUMBER;
+        long startTimestamp = globalState.getNextSampleTimestamp(lastTimestamp.get(databaseAndTableName));
+        long endTimestamp = startTimestamp + nrRows * globalState.getOptions().getSamplingFrequency();
+        SamplingFrequency samplingFrequency = SamplingFrequencyManager.getInstance()
+                .getSamplingFrequencyFromCollection(databaseName, tableName);
+        List<Long> timestamps = samplingFrequency.apply(startTimestamp, endTimestamp);
+        lastTimestamp.put(databaseAndTableName, endTimestamp);
+        // 仅支持插入最新数据进行覆盖, 将以历史数据作为行数据
+        // MetricName -> CollectorAttribute
+        Map<String, CollectorAttribute> collectorMap = new HashMap<>();
+
+        for (PrometheusSchema.PrometheusColumn column : table.getRandomNonEmptyColumnSubset()) {
+            String columnName = column.getName();
+            // random generate double val
+            List<Double> doubles = new ArrayList<>();
+            for (int row = 0; row < nrRows; row++) {
+                // TODO TSAFDataType.INT
+                BigDecimal nextValue = EquationsManager.getInstance()
+                        .initEquationsFromTimeSeries(databaseName, tableName, columnName, TSAFDataType.INT)
+                        .genValueByTimestamp(samplingFrequency, timestamps.get(row));
+                // TODO NULL VALUE
+                doubles.add(nextValue.doubleValue());
+            }
+
+            CollectorAttribute attribute = new CollectorAttribute();
+            attribute.setDataType(column.getType());
+            attribute.setMetricName(databaseName);
+            attribute.setTableName(tableName);
+            attribute.setTimeSeriesName(columnName);
+            attribute.setDoubleValues(doubles);
+            attribute.setTimestamps(timestamps);
+            attribute.setHelp(String.format("%s.%s.%s", databaseName, tableName, columnName));
+            collectorMap.put(columnName, attribute);
+        }
+        return collectorMap;
+    }
+
+    public static Long getLastTimestamp(String databaseName, String tableName) {
+        return lastTimestamp.get(generateHashKey(databaseName, tableName));
+    }
+
+    public static String generateHashKey(String databaseName, String tableName) {
+        return String.format("%s_%s", databaseName, tableName);
+    }
 }

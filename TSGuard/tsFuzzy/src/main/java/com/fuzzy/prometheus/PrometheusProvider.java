@@ -5,12 +5,9 @@ import com.fuzzy.common.DBMSCommon;
 import com.fuzzy.common.constant.GlobalConstant;
 import com.fuzzy.common.query.SQLQueryAdapter;
 import com.fuzzy.common.query.SQLQueryProvider;
-import com.fuzzy.prometheus.apiEntry.PrometheusQueryParam;
-import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
 import com.fuzzy.prometheus.gen.PrometheusDatabaseGenerator;
 import com.fuzzy.prometheus.gen.PrometheusInsertGenerator;
 import com.fuzzy.prometheus.gen.PrometheusTableGenerator;
-import com.fuzzy.prometheus.resultSet.PrometheusResultSet;
 import com.google.auto.service.AutoService;
 
 import java.sql.SQLException;
@@ -64,14 +61,14 @@ public class PrometheusProvider extends SQLProviderAdapter<PrometheusGlobalState
 
     @Override
     public void generateDatabase(PrometheusGlobalState globalState) throws Exception {
-        // TODO 查询数量
+        // 查询表数量，不足则继续建表
         while (globalState.getSchema().getDatabaseTables().size() < Randomly.smallNumber() + 1) {
             String tableName = DBMSCommon.createTableName(globalState.getSchema().getMaxTableIndex() + 1);
             SQLQueryAdapter createTable = PrometheusTableGenerator.generate(globalState, tableName);
             globalState.executeStatement(createTable);
         }
 
-        // TODO
+        // TODO 数据生成
         StatementExecutor<PrometheusGlobalState, Action> se = new StatementExecutor<>(globalState, Action.values(),
                 PrometheusProvider::mapActions, (q) -> {
             if (globalState.getSchema().getDatabaseTables().isEmpty()) {
@@ -93,9 +90,9 @@ public class PrometheusProvider extends SQLProviderAdapter<PrometheusGlobalState
         try (PrometheusStatement s = prometheusConnection.createStatement()) {
             // example: databaseName{tableName="t0", seriesName="s0"} 10 1745510400000
             String databaseMatch = String.format("match[]={database=\"%s\"}", databaseName);
-            PrometheusResultSet prometheusResultSet = (PrometheusResultSet) s.executeQuery(
-                    new PrometheusQueryParam(databaseMatch)
-                            .genPrometheusRequestParam(PrometheusRequestType.SERIES_QUERY));
+//            PrometheusResultSet prometheusResultSet = (PrometheusResultSet) s.executeQuery(
+//                    new PrometheusQueryParam(databaseMatch)
+//                            .genPrometheusRequestParam(PrometheusRequestType.SERIES_QUERY));
             // TODO Prometheus无需删除数据, 每轮测试开始时间点都不一样, 为当前时间回退 30s
 //            if (prometheusResultSet.hasNext()) {
 //                s.execute(JSONObject.toJSONString(new PrometheusQueryParam(

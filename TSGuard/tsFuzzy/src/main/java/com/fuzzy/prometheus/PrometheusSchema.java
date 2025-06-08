@@ -12,7 +12,6 @@ import com.fuzzy.prometheus.apiEntry.entity.PrometheusSeriesResultItem;
 import com.fuzzy.prometheus.constant.PrometheusLabelConstant;
 import com.fuzzy.prometheus.grpc.PrometheusConstant;
 import com.fuzzy.prometheus.resultSet.PrometheusResultSet;
-import com.fuzzy.prometheus.util.WaitPrometheusScrapeData;
 
 import java.sql.SQLException;
 import java.util.*;
@@ -97,21 +96,19 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
             try {
                 List<PrometheusTable> databaseTables = new ArrayList<>();
                 try (TSFuzzyStatement s = con.createStatement()) {
-                    // 等待创建数据库并被Prometheus抓捕
-                    WaitPrometheusScrapeData.waitPrometheusScrapeData();
-                    String databaseMatch = String.format("match[]={database=\"%s\"}", databaseName);
+                    String databaseMatch = String.format("match[]={__name__=\"%s\"}", databaseName);
                     // 查询数据库结构
                     try (PrometheusResultSet prometheusResultSet = (PrometheusResultSet)
-                            s.executeQuery(new PrometheusQueryParam(databaseMatch,
-                                    System.currentTimeMillis() / 1000)
+                            s.executeQuery(new PrometheusQueryParam(databaseMatch)
                                     .genPrometheusRequestParam(PrometheusRequestType.SERIES_QUERY))) {
 
-                        // 将获取数据按照<database, table, column>去重
+                        // 将获取数据按照 <database, table, timeSeries> 去重
                         Set<PrometheusSeriesResultItem> seriesSet = new HashSet<>();
                         while (prometheusResultSet.hasNext()) {
                             Object rowRecord = prometheusResultSet.getCurrentValue();
                             PrometheusSeriesResultItem seriesResultItem =
                                     JSONObject.parseObject(rowRecord.toString(), PrometheusSeriesResultItem.class);
+                            // DatabaseInit 不纳入数据库表数量计算
                             if (seriesResultItem.getTable().equals(PrometheusLabelConstant.DATABASE_INIT.getLabel()))
                                 continue;
 

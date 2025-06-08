@@ -21,11 +21,16 @@ public class TestPrometheus {
 
     @Test
     public void testTSAF() {
+        // 测试数据时间范围：[cur - 3400, cur], unit: s
+        long curTimestamp = System.currentTimeMillis() / 1000;
+        long startTimestamp = curTimestamp - 3400;
+
         assertEquals(0,
                 Main.executeMain(new String[]{"--random-seed", "-1", "--timeout-seconds", TestConfig.SECONDS,
                         "--num-threads", "1", "--host", "172.29.185.200", "--port", "9090", "--precision", "ms",
                         "--log-syntax-error-query", "true", "--max-expression-depth", "4",
                         "--log-execution-time", "false", "--num-tries", "2000",
+                        "--start-timestamp", String.valueOf(startTimestamp),
                         "--params", "",
                         "--use-syntax-validator", "--use-syntax-sequence",
                         "--random-string-generation", "ALPHANUMERIC", "--database-prefix",

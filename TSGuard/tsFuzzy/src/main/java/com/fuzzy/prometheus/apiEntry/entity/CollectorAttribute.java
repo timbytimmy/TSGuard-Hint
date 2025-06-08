@@ -3,7 +3,6 @@ package com.fuzzy.prometheus.apiEntry.entity;
 import build.buf.gen.io.prometheus.write.v2.Request;
 import build.buf.gen.io.prometheus.write.v2.Sample;
 import build.buf.gen.io.prometheus.write.v2.TimeSeries;
-import com.fuzzy.Randomly;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusDataType;
 import com.fuzzy.prometheus.constant.PrometheusLabelConstant;
 import lombok.Data;
@@ -33,7 +32,7 @@ public class CollectorAttribute {
         this.timestamps = new ArrayList<>();
     }
 
-    public void randomInitValue(Randomly randomly) {
+    public void randomInitValue(long startTimestamp) {
 //        switch (this.dataType) {
 //            case COUNTER:
 //                this.doubleValues = Collections.singletonList((double) randomly.getInteger(1, Integer.MAX_VALUE));
@@ -45,8 +44,9 @@ public class CollectorAttribute {
 //            case SUMMARY:
 //            default:
 //        }
+        // 初始化表时间: 测试区间左边界 startTimestamp - 100s
         this.doubleValues = Collections.singletonList(0.0);
-        this.timestamps = Collections.singletonList(System.currentTimeMillis() - 30 * 1000L);
+        this.timestamps = Collections.singletonList(startTimestamp - 100 * 1000L);
     }
 
     public void defaultValue() {

@@ -99,20 +99,21 @@ public class PrometheusPushClient {
     @Test
     public void testPrometheusInsertParam() throws IOException, InterruptedException {
         // TODO 不同时序之间不共享时间戳进度，但是应该有阈值要求回填不能超过多少范围
-        // TODO Prometheus 数据采样：当前值往前推 30s，将
+        // TODO 要求回填阈值不超过当前时间 3600 s
+        // TODO Prometheus 数据采样
         CollectorAttribute collectorAttribute = new CollectorAttribute();
-        String metricName = "db0";
+        String metricName = "db0_uuid_4";
         collectorAttribute.setMetricName(metricName);
         collectorAttribute.setTableName("t0");
         collectorAttribute.setTimeSeriesName("ts8");
         collectorAttribute.getDoubleValues().add(40.0);
+        collectorAttribute.getTimestamps().add(1749260880000L);
         collectorAttribute.getDoubleValues().add(41.0);
-        collectorAttribute.getTimestamps().add(1748136859175L);
         collectorAttribute.getTimestamps().add(1748136858175L);
 
         Map<String, String> labels = new HashMap<>();
         labels.put("label", "val");
-        String metricName0 = "db1";
+        String metricName0 = "db1_uuid0";
         CollectorAttribute collectorAttribute0 = new CollectorAttribute();
         collectorAttribute0.setMetricName(metricName0);
         collectorAttribute0.setTableName("t1");

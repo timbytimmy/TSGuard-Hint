@@ -565,13 +565,7 @@ public final class Main {
         final AtomicBoolean someOneFails = new AtomicBoolean(false);
 
         for (int i = 0; i < options.getTotalNumberTries(); i++) {
-            String databaseName;
-            // IotDB不支持纯数字作为数据库名
-            if (GlobalConstant.IOTDB_DATABASE_NAME.equalsIgnoreCase(jc.getParsedCommand())) {
-                databaseName = options.getDatabasePrefix() + "db" + i;
-            } else {
-                databaseName = options.getDatabasePrefix() + i;
-            }
+            String databaseName = generateNameForDatabase(jc.getParsedCommand(), options.getDatabasePrefix(), i);
 
             final long seed;
             if (options.getRandomSeed() == -1) {
@@ -704,6 +698,21 @@ public final class Main {
         }
 
         return someOneFails.get() ? options.getErrorExitCode() : 0;
+    }
+
+    private static String generateNameForDatabase(String databaseType, String databaseNamePrefix, int iterationNo) {
+        String databaseName;
+
+        if (GlobalConstant.IOTDB_DATABASE_NAME.equalsIgnoreCase(databaseType)) {
+            // IotDB 不支持纯数字作为数据库名
+            databaseName = databaseNamePrefix + "db" + iterationNo;
+        } else if (GlobalConstant.PROMETHEUS_DATABASE_NAME.equalsIgnoreCase(databaseType)) {
+            // Prometheus 要求随机生成数据库名, 基于此使用 Remote Write 时不限于时间范围
+            databaseName = databaseNamePrefix + "db" + iterationNo + "_" + UUID.randomUUID();
+        } else {
+            databaseName = databaseNamePrefix + iterationNo;
+        }
+        return databaseName;
     }
 
     /**

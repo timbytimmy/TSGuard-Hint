@@ -708,7 +708,8 @@ public final class Main {
             databaseName = databaseNamePrefix + "db" + iterationNo;
         } else if (GlobalConstant.PROMETHEUS_DATABASE_NAME.equalsIgnoreCase(databaseType)) {
             // Prometheus 要求随机生成数据库名, 基于此使用 Remote Write 时不限于时间范围
-            databaseName = databaseNamePrefix + "db" + iterationNo + "_" + UUID.randomUUID();
+            databaseName = databaseNamePrefix + "_" + iterationNo + "_"
+                    + UUID.randomUUID().toString().replace("-", "_");
         } else {
             databaseName = databaseNamePrefix + iterationNo;
         }

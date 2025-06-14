@@ -79,6 +79,13 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
             super(name, databaseName, columns, indexes, false);
         }
 
+        @Override
+        public String selectCountStatement() {
+            String queryBody = String.format("count_over_time(%s{table='%s'}[1h])", this.getDatabaseName(),
+                    this.getSelectCountTableName());
+            return new PrometheusQueryParam(queryBody).genPrometheusRequestParam(PrometheusRequestType.INSTANT_QUERY);
+        }
+
     }
 
     public static final class PrometheusIndex extends TableIndex {

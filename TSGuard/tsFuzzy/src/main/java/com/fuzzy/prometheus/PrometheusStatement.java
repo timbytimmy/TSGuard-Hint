@@ -9,10 +9,7 @@ import com.fuzzy.prometheus.apiEntry.PrometheusInsertParam;
 import com.fuzzy.prometheus.apiEntry.PrometheusQueryParam;
 import com.fuzzy.prometheus.apiEntry.PrometheusRequestParam;
 import com.fuzzy.prometheus.apiEntry.entity.CollectorAttribute;
-import com.fuzzy.prometheus.client.builder.CleanTombstonesBuilder;
-import com.fuzzy.prometheus.client.builder.QueryBuilderType;
-import com.fuzzy.prometheus.client.builder.SeriesDeleteBuilder;
-import com.fuzzy.prometheus.client.builder.SeriesMetaQueryBuilder;
+import com.fuzzy.prometheus.client.builder.*;
 import com.fuzzy.prometheus.client.builder.pushGateway.PushGatewaySeriesDeleteBuilder;
 import com.fuzzy.prometheus.client.builder.pushGateway.PushGatewaySeriesQueryBuilder;
 import com.fuzzy.prometheus.resultSet.PrometheusResultSet;
@@ -103,6 +100,12 @@ public class PrometheusStatement implements TSFuzzyStatement {
                             QueryBuilderType.PushGatewaySeriesQuery.newInstance(apiEntry.getPushGatewayServer());
                     targetUri = pushGatewaySeriesQueryBuilder.build();
                     break;
+                case INSTANT_QUERY:
+                    InstantQueryBuilder instantQueryBuilder =
+                            QueryBuilderType.InstantQuery.newInstance(apiEntry.getTargetServer());
+                    if (param.getStart() != null) instantQueryBuilder.withEpochTime(param.getStart());
+                    targetUri = instantQueryBuilder.withQuery(param.getRequestBody()).build();
+                    break;
 //                case series_delete:
 //                    SeriesDeleteBuilder deleteBuilder =
 //                            QueryBuilderType.SeriesDelete.newInstance(apiEntry.getTargetServer());
@@ -112,7 +115,7 @@ public class PrometheusStatement implements TSFuzzyStatement {
                     throw new IllegalArgumentException(String.format("查询参数类型不存在, type:%s",
                             requestParam.getType()));
             }
-            return new PrometheusResultSet(this.apiEntry.executeGetRequest(targetUri));
+            return new PrometheusResultSet(this.apiEntry.executeGetRequest(targetUri), requestParam.getType());
         } catch (Exception e) {
             log.error("执行查询失败, queryParam:{} e:", queryParam, e);
             throw new SQLException(e.getMessage());

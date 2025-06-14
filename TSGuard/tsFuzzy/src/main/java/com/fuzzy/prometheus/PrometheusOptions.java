@@ -7,6 +7,7 @@ import com.fuzzy.OracleFactory;
 import com.fuzzy.common.oracle.TestOracle;
 import com.fuzzy.prometheus.PrometheusOptions.PrometheusOracleFactory;
 import com.fuzzy.prometheus.oracle.PrometheusPivotedQuerySynthesisOracle;
+import com.fuzzy.prometheus.oracle.PrometheusTSAFOracle;
 
 import java.sql.SQLException;
 import java.util.Arrays;
@@ -24,11 +25,11 @@ public class PrometheusOptions implements DBMSSpecificOptions<PrometheusOracleFa
     public enum PrometheusOracleFactory implements OracleFactory<PrometheusGlobalState> {
 
         PQS {
-
             @Override
             public TestOracle<PrometheusGlobalState> create(PrometheusGlobalState globalState) throws SQLException {
                 return new PrometheusPivotedQuerySynthesisOracle(globalState);
             }
+
             @Override
             public boolean requiresAllTablesToContainRows() {
                 return true;
@@ -36,11 +37,11 @@ public class PrometheusOptions implements DBMSSpecificOptions<PrometheusOracleFa
 
         },
         TSAF {
-
             @Override
             public TestOracle<PrometheusGlobalState> create(PrometheusGlobalState globalState) throws SQLException {
-                return new PrometheusPivotedQuerySynthesisOracle(globalState);
+                return new PrometheusTSAFOracle(globalState);
             }
+
             @Override
             public boolean requiresAllTablesToContainRows() {
                 return true;

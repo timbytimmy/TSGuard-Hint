@@ -31,6 +31,7 @@ public class TestPrometheus {
                         "--log-syntax-error-query", "true", "--max-expression-depth", "4",
                         "--log-execution-time", "false", "--num-tries", "2000",
                         "--start-timestamp", String.valueOf(startTimestamp),
+//                        "--drop-database",
                         "--params", "",
                         "--use-syntax-validator", "--use-syntax-sequence",
                         "--random-string-generation", "ALPHANUMERIC", "--database-prefix",

@@ -56,7 +56,7 @@ public class PrometheusInsertGenerator {
     private SQLQueryAdapter generateInsert() {
         PrometheusInsertParam insertParam = new PrometheusInsertParam();
 
-        // TODO 写接口，取出全部时间戳及数据值，一一验证正确性，从 Prometheus 页面可视化大图中初步看无问题
+        // 产出 Prometheus 数据
         if (globalState.usesTSAF()) {
             insertParam.setCollectorList(generateInsertForTSAF());
         } else {

@@ -2,21 +2,30 @@ package com.fuzzy.prometheus.oracle;
 
 
 import com.benchmark.entity.DBValResultSet;
+import com.fuzzy.Randomly;
 import com.fuzzy.SQLConnection;
+import com.fuzzy.common.gen.ReGenerateExpressionException;
 import com.fuzzy.common.oracle.TimeSeriesAlgebraFrameworkBase;
 import com.fuzzy.common.query.Query;
 import com.fuzzy.common.query.QueryExecutionStatistical;
+import com.fuzzy.common.query.SQLQueryAdapter;
+import com.fuzzy.common.tsaf.QueryType;
 import com.fuzzy.common.tsaf.TimeSeriesConstraint;
 import com.fuzzy.prometheus.PrometheusErrors;
 import com.fuzzy.prometheus.PrometheusGlobalState;
+import com.fuzzy.prometheus.PrometheusSchema;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusColumn;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusTable;
-import com.fuzzy.prometheus.ast.PrometheusExpression;
+import com.fuzzy.prometheus.PrometheusVisitor;
+import com.fuzzy.prometheus.ast.*;
+import com.fuzzy.prometheus.feedback.PrometheusQuerySynthesisFeedbackManager;
+import com.fuzzy.prometheus.gen.PrometheusExpressionGenerator;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class PrometheusTSAFOracle
@@ -26,7 +35,7 @@ public class PrometheusTSAFOracle
     private List<PrometheusColumn> columns;
     private PrometheusTable table;
     private PrometheusExpression whereClause;
-//    PrometheusSelect selectStatement;
+    PrometheusSelect selectStatement;
 
     public PrometheusTSAFOracle(PrometheusGlobalState globalState) {
         super(globalState);
@@ -35,36 +44,66 @@ public class PrometheusTSAFOracle
 
     @Override
     public Query<SQLConnection> getTimeSeriesQuery() {
-//        selectStatement = new PrometheusSelect();
-//        PrometheusSchema.PrometheusTables randomFromTables = globalState.getSchema().getRandomTableNonEmptyTables();
-//        table = randomFromTables.getTables().get(0);
-//        selectStatement.setFromList(Collections.singletonList(new PrometheusTableReference(table)));
-//        // 注: TSAF和大多数时序数据库均不支持将time字段和其他字段进行比较、算术二元运算
-//        columns = table.getColumns().stream().filter(c -> !c.isTag()).collect(Collectors.toList());
-//
-////        QueryType queryType = Randomly.fromOptions(QueryType.values());
-//        QueryType queryType = Randomly.fromOptions(QueryType.BASE_QUERY);
-//        selectStatement.setQueryType(queryType);
-//        // 随机窗口查询测试
-//        if (queryType.isTimeWindowQuery()) generateTimeWindowClause();
-//        else if (queryType.isTimeSeriesFunction())
+        PrometheusSchema schema = globalState.getSchema();
+        PrometheusSchema.PrometheusTables randomFromTables = schema.getRandomTableNonEmptyTables();
+        List<PrometheusSchema.PrometheusTable> tables = randomFromTables.getTables();
+        selectStatement = new PrometheusSelect();
+        table = Randomly.fromList(tables);
+        selectStatement.setSelectType(Randomly.fromOptions(PrometheusSelect.SelectType.values()));
+        // 注: TSAF和大多数时序数据库均不支持将time字段和其他字段进行比较、算术二元运算
+//        columns = randomFromTables.getColumns().stream()
+//                .filter(c -> !c.getName().equalsIgnoreCase(PrometheusConstantString.TIME_FIELD_NAME.getName())
+//                        && !c.getName().equalsIgnoreCase(PrometheusConstantString.DEVICE_ID_COLUMN_NAME.getName()))
+//                .collect(Collectors.toList());
+        columns = randomFromTables.getColumns();
+        selectStatement.setFromList(tables.stream().map(PrometheusTableReference::new).collect(Collectors.toList()));
+
+        // TODO
+//        QueryType queryType = Randomly.fromOptions(QueryType.values());
+        QueryType queryType = Randomly.fromOptions(QueryType.BASE_QUERY);
+        whereClause = generateExpression(columns);
+        selectStatement.setWhereClause(whereClause);
+        selectStatement.setQueryType(queryType);
+
+        // TODO
+//        if (queryType.isTimeWindowQuery()) {
+//            // 随机窗口查询测试
+//            generateTimeWindowClause(columns);
+//        }
+//        // TimeSeries Function
+//        else if (queryType.isTimeSeriesFunction()) {
+//            // 随机窗口查询测试
 //            selectStatement.setTimeSeriesFunction(PrometheusTimeSeriesFunc.getRandomFunction(
 //                    columns, globalState.getRandomly()));
-//        fetchColumns = columns.stream().map(column -> {
-//            String columnName = column.getName();
+//        }
+
+        // fetchColumns
+//        fetchColumns = columns.stream().map(c -> {
+//            String columnName = c.getName();
 //            if (queryType.isTimeWindowQuery())
-//                columnName = String.format("%s(%s)",
-//                        PrometheusAggregationType.getPrometheusAggregationType(selectStatement.getAggregationType()), columnName);
+//                columnName = String.format("%s(%s)", selectStatement.getAggregationType(), columnName);
 //            else if (queryType.isTimeSeriesFunction())
 //                columnName = selectStatement.getTimeSeriesFunction().combinedArgs(columnName);
-//            return new PrometheusColumnReference(new PrometheusColumn(columnName, column.isTag(), column.getType()), null);
+//            return new PrometheusColumnReference(new PrometheusSchema.PrometheusColumn(columnName, c.isTag(), c.getType()), null);
 //        }).collect(Collectors.toList());
-//        selectStatement.setFetchColumns(fetchColumns);
-//        whereClause = generateExpression(columns);
-//        selectStatement.setWhereClause(whereClause);
-//
-//        return new SQLQueryAdapter(PrometheusVisitor.asString(selectStatement), errors);
-        return null;
+        fetchColumns = columns.stream().map(c -> new PrometheusColumnReference(c, null))
+                .collect(Collectors.toList());
+//        String timeColumnName = queryType.isTimeWindowQuery() ? PrometheusConstantString.W_START_TIME_COLUMN_NAME.getName() :
+//                PrometheusConstantString.TIME_FIELD_NAME.getName();
+//        fetchColumns.add(new PrometheusColumnReference(new PrometheusSchema.PrometheusColumn(timeColumnName, false,
+//                PrometheusSchema.PrometheusDataType.TIMESTAMP), null));
+        selectStatement.setFetchColumns(fetchColumns);
+
+        // ORDER BY
+        // Prometheus distinct 不支持和order by time结合
+//        if (!(selectStatement.getQueryType().isTimeSeriesFunction()
+//                && selectStatement.getFromOptions() == PrometheusSelect.SelectType.DISTINCT)) {
+//            List<PrometheusExpression> orderBy = new PrometheusExpressionGenerator(globalState).setColumns(
+//                    Collections.singletonList(new PrometheusSchema.PrometheusColumn(timeColumnName, false,
+//                            PrometheusSchema.PrometheusDataType.TIMESTAMP))).generateOrderBys();
+//            selectStatement.setOrderByExpressions(orderBy);
+//        }
+        return new SQLQueryAdapter(PrometheusVisitor.asString(selectStatement), errors);
     }
 
     @Override
@@ -230,7 +269,7 @@ public class PrometheusTSAFOracle
                 aggregationResultSet.size(), aggregationResultSet));
     }
 
-//    private PrometheusConstant getConstantFromResultSet(List<String> resultSet, PrometheusDataType dataType,
+    //    private PrometheusConstant getConstantFromResultSet(List<String> resultSet, PrometheusDataType dataType,
 //                                                      int columnIndex) {
 //        if (resultSet.get(columnIndex).equalsIgnoreCase("null")) return PrometheusConstant.createNullConstant();
 //
@@ -266,59 +305,58 @@ public class PrometheusTSAFOracle
 //        return constant;
 //    }
 //
-//    private PrometheusExpression generateExpression(List<PrometheusColumn> columns) {
-//        PrometheusExpression result = null;
-//        boolean reGenerateExpr;
-//        int regenerateCounter = 0;
-//        String predicateSequence = "";
-//        do {
-//            reGenerateExpr = false;
-//            try {
-//                PrometheusExpression predicateExpression = new PrometheusExpressionGenerator(globalState).setColumns(columns)
-//                        .generateExpression();
-//                // 将表达式纠正为BOOLEAN类型
-//                PrometheusExpression rectifiedPredicateExpression = predicateExpression;
+    private PrometheusExpression generateExpression(List<PrometheusSchema.PrometheusColumn> columns) {
+        // TODO 生成 INT 或者 DOUBLE 值进行表达式测试
+        PrometheusExpression result = null;
+        boolean reGenerateExpr;
+        int regenerateCounter = 0;
+        String predicateSequence = "";
+        do {
+            reGenerateExpr = false;
+            try {
+                PrometheusExpression predicateExpression =
+                        new PrometheusExpressionGenerator(globalState).setColumns(columns).generateExpression();
+                // 将表达式纠正为BOOLEAN类型
+                PrometheusExpression rectifiedPredicateExpression = predicateExpression;
+
+                // 单列谓词 -> 重新生成
 //                if (!predicateExpression.getExpectedValue().isBoolean()) {
 //                    rectifiedPredicateExpression =
 //                            PrometheusUnaryNotPrefixOperation.getNotUnaryPrefixOperation(predicateExpression);
 //                }
-//
-//                // generate time column
-//                PrometheusColumn timeColumn = new PrometheusColumn(PrometheusValueStateConstant.TIME_FIELD.getValue(),
-//                        false, PrometheusDataType.INT);
-//                PrometheusTimeExpressionGenerator timeExpressionGenerator = new PrometheusTimeExpressionGenerator(globalState);
-//                PrometheusExpression timeExpression = timeExpressionGenerator.setColumns(
-//                        Collections.singletonList(timeColumn)).generateExpression();
-//
-//                result = new PrometheusBinaryLogicalOperation(rectifiedPredicateExpression, timeExpression,
-//                        PrometheusBinaryLogicalOperation.PrometheusBinaryLogicalOperator.AND);
-//                String expressionStr = PrometheusVisitor.asString(result);
-//                log.info("Expression: {}", expressionStr);
-//
-//                // 语法节点序列指导查询合成
-//                predicateSequence = PrometheusVisitor.asString(rectifiedPredicateExpression, true);
-//                if (globalState.getOptions().useSyntaxSequence()
-//                        && PrometheusQuerySynthesisFeedbackManager.isRegenerateSequence(predicateSequence)) {
-//                    regenerateCounter++;
-//                    if (regenerateCounter >= PrometheusQuerySynthesisFeedbackManager.MAX_REGENERATE_COUNT_PER_ROUND) {
-//                        PrometheusQuerySynthesisFeedbackManager.incrementExpressionDepth(
-//                                globalState.getOptions().getMaxExpressionDepth());
-//                        regenerateCounter = 0;
-//                    }
-//                    throw new ReGenerateExpressionException(String.format("该语法节点序列需重新生成:%s", predicateSequence));
-//                }
-//                // 更新概率表
-//                PrometheusQuerySynthesisFeedbackManager.addSequenceRegenerateProbability(predicateSequence);
-//            } catch (ReGenerateExpressionException e) {
-//                log.info("ReGenerateExpression: {}", e.getMessage());
-//                reGenerateExpr = true;
-//            }
-//        } while (reGenerateExpr);
-//
-//        timePredicate = result;
-//        this.predicateSequence = predicateSequence;
-//        return result;
-//    }
+
+                // add time column
+//                PrometheusExpression timeExpression = new PrometheusTimeExpressionGenerator(globalState).setColumns(
+//                        Collections.singletonList(new PrometheusSchema.PrometheusColumn(PrometheusConstantString.TIME_FIELD_NAME.getName(),
+//                                false, PrometheusSchema.PrometheusDataType.TIMESTAMP))).generateExpression();
+                PrometheusExpression timeExpression = null;
+
+                result = new PrometheusBinaryLogicalOperation(rectifiedPredicateExpression, timeExpression,
+                        PrometheusBinaryLogicalOperation.PrometheusBinaryLogicalOperator.AND);
+//                log.info("Expression: {}", PrometheusVisitor.asString(result));
+
+                predicateSequence = PrometheusVisitor.asString(rectifiedPredicateExpression, true);
+                if (globalState.getOptions().useSyntaxSequence()
+                        && PrometheusQuerySynthesisFeedbackManager.isRegenerateSequence(predicateSequence)) {
+                    regenerateCounter++;
+                    if (regenerateCounter >= PrometheusQuerySynthesisFeedbackManager.MAX_REGENERATE_COUNT_PER_ROUND) {
+                        PrometheusQuerySynthesisFeedbackManager.incrementExpressionDepth(
+                                globalState.getOptions().getMaxExpressionDepth());
+                        regenerateCounter = 0;
+                    }
+                    throw new ReGenerateExpressionException(String.format("该语法节点序列需重新生成:%s", predicateSequence));
+                }
+                // 更新概率表
+                PrometheusQuerySynthesisFeedbackManager.addSequenceRegenerateProbability(predicateSequence);
+            } catch (ReGenerateExpressionException e) {
+                reGenerateExpr = true;
+            }
+        } while (reGenerateExpr);
+
+        timePredicate = result;
+        this.predicateSequence = predicateSequence;
+        return result;
+    }
 //
 //    private void generateTimeWindowClause() {
 //        selectStatement.setAggregationType(PrometheusAggregationType.getRandomAggregationType());

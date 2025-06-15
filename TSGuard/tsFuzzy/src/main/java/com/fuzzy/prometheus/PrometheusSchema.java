@@ -9,8 +9,8 @@ import com.fuzzy.common.schema.*;
 import com.fuzzy.prometheus.apiEntry.PrometheusQueryParam;
 import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
 import com.fuzzy.prometheus.apiEntry.entity.PrometheusSeriesResultItem;
+import com.fuzzy.prometheus.ast.PrometheusConstant;
 import com.fuzzy.prometheus.constant.PrometheusLabelConstant;
-import com.fuzzy.prometheus.grpc.PrometheusConstant;
 import com.fuzzy.prometheus.resultSet.PrometheusResultSet;
 
 import java.sql.SQLException;
@@ -19,6 +19,18 @@ import java.util.*;
 public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, PrometheusSchema.PrometheusTable> {
 
     private static final int NR_SCHEMA_READ_TRIES = 10;
+
+    public enum CommonDataType {
+        INT, DOUBLE, BOOLEAN, NULL, BIGDECIMAL;
+
+        public static CommonDataType getRandom(PrometheusGlobalState globalState) {
+            if (globalState.usesPQS() || globalState.usesTSAF()) {
+                return Randomly.fromOptions(CommonDataType.INT, CommonDataType.DOUBLE);
+            } else {
+                return Randomly.fromOptions(values());
+            }
+        }
+    }
 
     public enum PrometheusDataType {
         COUNTER, GAUGE, HISTOGRAM, SUMMARY;

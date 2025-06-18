@@ -35,6 +35,14 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
     public enum PrometheusDataType {
         COUNTER, GAUGE, HISTOGRAM, SUMMARY;
 
+        public static PrometheusSchema.PrometheusDataType[] valuesPQS() {
+            return new PrometheusSchema.PrometheusDataType[]{GAUGE};
+        }
+
+        public static PrometheusSchema.PrometheusDataType[] valuesTSAF() {
+            return new PrometheusSchema.PrometheusDataType[]{GAUGE};
+        }
+
         public static PrometheusDataType getRandom(PrometheusGlobalState globalState) {
             if (globalState.usesPQS() || globalState.usesTSAF()) {
                 return Randomly.fromOptions(PrometheusDataType.COUNTER, PrometheusDataType.GAUGE);
@@ -55,6 +63,19 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
             }
         }
 
+        public boolean isInt() {
+            // TODO
+            return true;
+//            switch (this) {
+//                case COUNTER:
+//                case GAUGE:
+//                case HISTOGRAM:
+//                case SUMMARY:
+//                    return true;
+//                default:
+//                    throw new AssertionError(this);
+//            }
+        }
     }
 
     public static class PrometheusColumn extends AbstractTableColumn<PrometheusTable, PrometheusDataType> {

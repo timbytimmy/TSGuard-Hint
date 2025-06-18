@@ -4,6 +4,7 @@ package com.fuzzy.prometheus.ast;
 import com.fuzzy.IgnoreMeException;
 import com.fuzzy.Randomly;
 import com.fuzzy.common.tsaf.aggregation.DoubleArithmeticPrecisionConstant;
+import com.fuzzy.prometheus.PrometheusSchema;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
@@ -50,14 +51,15 @@ public class PrometheusBinaryArithmeticOperation implements PrometheusExpression
             @Override
             public PrometheusConstant apply(PrometheusConstant left, PrometheusConstant right) {
                 // 小数求模
-//                if (left.castAs(CastType.BIGDECIMAL).getBigDecimalValue()
-//                        .remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0
-//                        || right.castAs(CastType.BIGDECIMAL).getBigDecimalValue()
-//                        .remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) {
-//                    log.warn("不支持小数求模");
-//                    throw new IgnoreMeException();
-//                }
+                if (left.castAs(PrometheusSchema.CommonDataType.BIGDECIMAL).getBigDecimalValue()
+                        .remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0
+                        || right.castAs(PrometheusSchema.CommonDataType.BIGDECIMAL).getBigDecimalValue()
+                        .remainder(BigDecimal.ONE).compareTo(BigDecimal.ZERO) != 0) {
+                    log.warn("不支持小数求模");
+                    throw new IgnoreMeException();
+                }
 
+                // TODO
                 return applyArithmeticOperation(left, right, (l, r) -> l.remainder(r));
             }
         };
@@ -65,17 +67,16 @@ public class PrometheusBinaryArithmeticOperation implements PrometheusExpression
         private String textRepresentation;
 
         private static PrometheusConstant applyArithmeticOperation(PrometheusConstant left, PrometheusConstant right,
-                                                                 BinaryOperator<BigDecimal> op) {
+                                                                   BinaryOperator<BigDecimal> op) {
             if (left.isNull() || right.isNull()) {
                 return PrometheusConstant.createNullConstant();
             } else {
-//                BigDecimal leftVal = left.castAs(CastType.BIGDECIMAL).getBigDecimalValue();
-//                BigDecimal rightVal = right.castAs(CastType.BIGDECIMAL).getBigDecimalValue();
+                BigDecimal leftVal = left.castAs(PrometheusSchema.CommonDataType.BIGDECIMAL).getBigDecimalValue();
+                BigDecimal rightVal = right.castAs(PrometheusSchema.CommonDataType.BIGDECIMAL).getBigDecimalValue();
 
                 try {
-//                    BigDecimal value = op.apply(leftVal, rightVal);
-//                    return PrometheusConstant.createBigDecimalConstant(value);
-                    return null;
+                    BigDecimal value = op.apply(leftVal, rightVal);
+                    return PrometheusConstant.createBigDecimalConstant(value);
                 } catch (ArithmeticException e) {
                     log.warn("除数不能为0.");
                     throw new IgnoreMeException();

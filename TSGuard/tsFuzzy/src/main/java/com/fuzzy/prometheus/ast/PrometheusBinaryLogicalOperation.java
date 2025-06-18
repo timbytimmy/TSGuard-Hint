@@ -23,9 +23,11 @@ public class PrometheusBinaryLogicalOperation implements PrometheusExpression {
         OR("OR") {
             @Override
             public PrometheusConstant apply(PrometheusConstant left, PrometheusConstant right) {
-                if (left.isNull() && right.isNull()) return PrometheusConstant.createNullConstant();
-                else if (left.isNull()) return PrometheusConstant.createBoolean(right.asBooleanNotNull());
-                else if (right.isNull()) return PrometheusConstant.createBoolean(left.asBooleanNotNull());
+                // TODO
+//                if (left.isNull() && right.isNull()) return PrometheusConstant.createNullConstant();
+//                else if (left.isNull()) return PrometheusConstant.createBoolean(right.asBooleanNotNull());
+//                else if (right.isNull()) return PrometheusConstant.createBoolean(left.asBooleanNotNull());
+                if (left.isNull() || right.isNull()) return PrometheusConstant.createNullConstant();
                 else return PrometheusConstant.createBoolean(left.asBooleanNotNull() || right.asBooleanNotNull());
             }
         };

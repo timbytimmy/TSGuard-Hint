@@ -4,6 +4,9 @@ package com.fuzzy.prometheus.gen;
 import com.fuzzy.Randomly;
 import com.fuzzy.common.gen.ReGenerateExpressionException;
 import com.fuzzy.common.gen.UntypedExpressionGenerator;
+import com.fuzzy.common.tsaf.EquationsManager;
+import com.fuzzy.common.tsaf.samplingfrequency.SamplingFrequency;
+import com.fuzzy.common.tsaf.samplingfrequency.SamplingFrequencyManager;
 import com.fuzzy.prometheus.PrometheusGlobalState;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusColumn;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusDataType;
@@ -17,6 +20,7 @@ import com.fuzzy.prometheus.feedback.PrometheusQuerySynthesisFeedbackManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.ObjectUtils;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -42,63 +46,64 @@ public class PrometheusExpressionGenerator extends UntypedExpressionGenerator<Pr
     }
 
     private void initGenerator() {
+        // TODO
         // 查询有效性（靠标记规避语法不符合的节点）
         // 经过严格配对实验，以下各种组合均属于语法错误
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_PREFIX_OPERATION, Actions.UNARY_NOT_PREFIX_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_PREFIX_OPERATION, Actions.UNARY_POSTFIX));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_PREFIX_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_PREFIX_OPERATION, Actions.BINARY_COMPARISON_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_PREFIX_OPERATION, Actions.UNARY_NOT_PREFIX_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_PREFIX_OPERATION, Actions.UNARY_POSTFIX));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_PREFIX_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_PREFIX_OPERATION, Actions.BINARY_COMPARISON_OPERATION));
 
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.UNARY_NOT_PREFIX_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.UNARY_POSTFIX));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.BINARY_LOGICAL_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.BINARY_COMPARISON_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.IN_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.BETWEEN_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.UNARY_NOT_PREFIX_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.UNARY_POSTFIX));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.BINARY_LOGICAL_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.BINARY_COMPARISON_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.IN_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.UNARY_POSTFIX, Actions.BETWEEN_OPERATOR));
 
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.COLUMN));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.LITERAL));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.UNARY_PREFIX_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.BINARY_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.BINARY_ARITHMETIC_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.CAST_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.COLUMN));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.LITERAL));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.UNARY_PREFIX_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.BINARY_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.BINARY_ARITHMETIC_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_LOGICAL_OPERATOR, Actions.CAST_OPERATOR));
+//
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.UNARY_NOT_PREFIX_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.UNARY_POSTFIX));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.BINARY_COMPARISON_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.BETWEEN_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.IN_OPERATION));
 
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.UNARY_NOT_PREFIX_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.UNARY_POSTFIX));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.BINARY_COMPARISON_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.BETWEEN_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_COMPARISON_OPERATION, Actions.IN_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.UNARY_NOT_PREFIX_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.UNARY_POSTFIX));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.BINARY_COMPARISON_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.BETWEEN_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.IN_OPERATION));
 
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.UNARY_NOT_PREFIX_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.UNARY_POSTFIX));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.BINARY_COMPARISON_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.BETWEEN_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_OPERATION, Actions.IN_OPERATION));
-
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.UNARY_NOT_PREFIX_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.UNARY_POSTFIX));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.BINARY_COMPARISON_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.BETWEEN_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.IN_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.UNARY_NOT_PREFIX_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.UNARY_POSTFIX));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.BINARY_COMPARISON_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.BETWEEN_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BINARY_ARITHMETIC_OPERATION, Actions.IN_OPERATION));
 
         // BETWEEN 不支持BOOL
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.BINARY_COMPARISON_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.BINARY_LOGICAL_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.UNARY_NOT_PREFIX_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.UNARY_POSTFIX));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.BETWEEN_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.IN_OPERATION));
-
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.UNARY_NOT_PREFIX_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.UNARY_POSTFIX));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.BINARY_COMPARISON_OPERATION));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.BETWEEN_OPERATOR));
-        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.IN_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.BINARY_COMPARISON_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.BINARY_LOGICAL_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.UNARY_NOT_PREFIX_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.UNARY_POSTFIX));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.BETWEEN_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.BETWEEN_OPERATOR, Actions.IN_OPERATION));
+//
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.UNARY_NOT_PREFIX_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.UNARY_POSTFIX));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.BINARY_LOGICAL_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.BINARY_COMPARISON_OPERATION));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.BETWEEN_OPERATOR));
+//        pairingProhibited.add(genHashKeyWithPairActions(Actions.IN_OPERATION, Actions.IN_OPERATION));
     }
 
     private String genHashKeyWithPairActions(final Actions parentNode, final Actions childNode) {
@@ -107,10 +112,12 @@ public class PrometheusExpressionGenerator extends UntypedExpressionGenerator<Pr
 
     private enum Actions {
         COLUMN(false), LITERAL(false), UNARY_PREFIX_OPERATION(false),
-        UNARY_NOT_PREFIX_OPERATION(true), UNARY_POSTFIX(true), COMPUTABLE_FUNCTION(false),
-        BINARY_LOGICAL_OPERATOR(true), BINARY_COMPARISON_OPERATION(true), IN_OPERATION(true),
-        BINARY_OPERATION(false), BINARY_ARITHMETIC_OPERATION(false),
-        BETWEEN_OPERATOR(true), CAST_OPERATOR(false);
+        BINARY_LOGICAL_OPERATOR(true), BINARY_COMPARISON_OPERATION(true),
+        BINARY_ARITHMETIC_OPERATION(false),
+//        BETWEEN_OPERATOR(true), CAST_OPERATOR(false),
+//        BINARY_OPERATION(false), IN_OPERATION(true),
+//        UNARY_NOT_PREFIX_OPERATION(true), UNARY_POSTFIX(true), COMPUTABLE_FUNCTION(false),
+        ;
 
         private boolean resultIsLogic;
 
@@ -151,7 +158,6 @@ public class PrometheusExpressionGenerator extends UntypedExpressionGenerator<Pr
         PrometheusExpression expression;
         switch (actions) {
             case COLUMN:
-                // Prometheus 不支持 cross join, 故 使用AND操作替代, AND 操作不支持COLUMN、LITERAL单列出现, 故parentActions不应为null
                 expression = generateColumn();
                 break;
             case LITERAL:
@@ -267,8 +273,8 @@ public class PrometheusExpressionGenerator extends UntypedExpressionGenerator<Pr
 //                    return new PrometheusUnaryPostfixOperation(generateExpressionForSyntaxValidity(childActions, null),
 //                            Randomly.fromOptions(PrometheusUnaryPostfixOperation.UnaryPostfixOperator.values()),
 //                            Randomly.getBoolean());
-                case COMPUTABLE_FUNCTION:
-                    return generateExpressionForSyntaxValidity(fatherActions, childActions);
+//                case COMPUTABLE_FUNCTION:
+//                    return generateExpressionForSyntaxValidity(fatherActions, childActions);
                 case BINARY_LOGICAL_OPERATOR:
                     return new PrometheusBinaryLogicalOperation(
                             generateExpressionForSyntaxValidity(childActions, null),
@@ -324,37 +330,26 @@ public class PrometheusExpressionGenerator extends UntypedExpressionGenerator<Pr
 
     @Override
     public PrometheusExpression generateConstant() {
-//        PrometheusDataType[] values;
-//        if (state.usesPQS()) {
-//            values = PrometheusDataType.valuesPQS();
-//        } else if (state.usesTSAF()) {
-//            values = PrometheusDataType.valuesTSAF();
-//        } else {
-//            values = PrometheusDataType.values();
-//        }
-//        switch (Randomly.fromOptions(values)) {
-//            case INT:
-//                return PrometheusConstant.createInt32Constant(state.getRandomly().getInteger());
-//            case UINT:
-//                return PrometheusConstant.createUInt32Constant(state.getRandomly().getUnsignedInteger());
-//            case BIGINT:
-//                // TODO 减少精度相关报错
-//                return PrometheusConstant.createInt64Constant(state.getRandomly().getInteger());
-//            case UBIGINT:
-//                return PrometheusConstant.createUInt64Constant(state.getRandomly().getUnsignedInteger());
-//            case BINARY:
-//            case VARCHAR:
-//                String string = state.getRandomly().getString().replace("\\", "").replace("\n", "");
-//                return PrometheusConstant.createStringConstant(string);
+        PrometheusDataType[] values;
+        if (state.usesPQS()) {
+            values = PrometheusDataType.valuesPQS();
+        } else if (state.usesTSAF()) {
+            values = PrometheusDataType.valuesTSAF();
+        } else {
+            values = PrometheusDataType.values();
+        }
+        // TODO
+        switch (Randomly.fromOptions(values)) {
+            case GAUGE:
+                return PrometheusConstant.createIntConstant(state.getRandomly().getInteger());
 //            case DOUBLE:
 //                double val = BigDecimal.valueOf((double) state.getRandomly().getInteger()
 //                        / state.getRandomly().getInteger()).setScale(
 //                        PrometheusDoubleConstant.scale, RoundingMode.HALF_UP).doubleValue();
 //                return PrometheusDoubleConstant.createDoubleConstant(val);
-//            default:
-//                throw new AssertionError();
-//        }
-        return null;
+            default:
+                throw new AssertionError();
+        }
     }
 
     public PrometheusExpression generateConstantForPrometheusDataType(PrometheusDataType PrometheusDataType) {
@@ -421,14 +416,13 @@ public class PrometheusExpressionGenerator extends UntypedExpressionGenerator<Pr
         PrometheusConstant val = null;
         if (rowVal == null) {
             // TSQS生成表达式时, rowVal默认值为1, 列存在因子时能够进行区分
-//            SamplingFrequency samplingFrequency = SamplingFrequencyManager.getInstance()
-//                    .getSamplingFrequencyFromCollection(state.getDatabaseName(), c.getTable().getName());
-//            BigDecimal bigDecimal = EquationsManager.getInstance().getEquationsFromTimeSeries(state.getDatabaseName(),
-//                            c.getTable().getName(), c.getName())
-//                    .genValueByTimestamp(samplingFrequency, state.getOptions().getStartTimestampOfTSData());
-//            val = c.getType().isInt() ? PrometheusConstant.createInt64Constant(bigDecimal.longValue()) :
-//                    c.getType().isNumeric() ? PrometheusConstant.createBigDecimalConstant(bigDecimal)
-//                            : PrometheusConstant.createStringConstant(bigDecimal.toPlainString());
+            SamplingFrequency samplingFrequency = SamplingFrequencyManager.getInstance()
+                    .getSamplingFrequencyFromCollection(state.getDatabaseName(), c.getTable().getName());
+            BigDecimal bigDecimal = EquationsManager.getInstance().getEquationsFromTimeSeries(state.getDatabaseName(),
+                            c.getTable().getName(), c.getName())
+                    .genValueByTimestamp(samplingFrequency, state.getOptions().getStartTimestampOfTSData());
+            val = c.getType().isInt() ? PrometheusConstant.createIntConstant(bigDecimal.longValue()) :
+                    PrometheusConstant.createBigDecimalConstant(bigDecimal);
         } else val = rowVal.getValues().get(c);
         return PrometheusColumnReference.create(c, val);
     }

@@ -1,11 +1,11 @@
 package com.fuzzy.prometheus.ast;
 
+import com.fuzzy.IgnoreMeException;
 import com.fuzzy.common.util.BigDecimalUtil;
 import com.fuzzy.prometheus.PrometheusSchema.CommonDataType;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
-import java.math.BigInteger;
 
 @Slf4j
 public abstract class PrometheusConstant implements PrometheusExpression {
@@ -48,6 +48,11 @@ public abstract class PrometheusConstant implements PrometheusExpression {
         @Override
         public PrometheusConstant isEquals(PrometheusConstant rightVal) {
             return null;
+        }
+
+        @Override
+        public PrometheusConstant castAs(CommonDataType type) {
+            throw throwException();
         }
 
         @Override
@@ -127,11 +132,33 @@ public abstract class PrometheusConstant implements PrometheusExpression {
         public PrometheusConstant isEquals(PrometheusConstant rightVal) {
             if (rightVal.isNull()) {
                 return PrometheusConstant.createNullConstant();
-            } /*else if (rightVal.isDouble() || rightVal.isBoolean() || rightVal.isInt() || rightVal.isBigDecimal() ||
-                    rightVal.isString()) {
-                return castAs(PrometheusCastOperation.CastType.BIGDECIMAL).isEquals(rightVal);
-            } */ else {
+            } else if (rightVal.isDouble() || rightVal.isBoolean() || rightVal.isInt() || rightVal.isBigDecimal()) {
+                return castAs(CommonDataType.BIGDECIMAL).isEquals(rightVal);
+            } else {
                 throw new AssertionError(rightVal);
+            }
+        }
+
+        @Override
+        public PrometheusConstant castAs(CommonDataType type) {
+            try {
+                switch (type) {
+                    case INT:
+                        return PrometheusConstant.createIntConstant((long) value);
+                    case BOOLEAN:
+                        return PrometheusConstant.createBoolean(
+                                castAs(CommonDataType.BIGDECIMAL).getBigDecimalValue()
+                                        .compareTo(new BigDecimal(0)) != 0);
+                    case DOUBLE:
+                        return this;
+                    case BIGDECIMAL:
+                        return PrometheusConstant.createBigDecimalConstant(new BigDecimal(stringRepresentation));
+                    default:
+                        throw new AssertionError();
+                }
+            } catch (NumberFormatException e) {
+                log.warn("数字转换格式错误");
+                throw new IgnoreMeException();
             }
         }
 
@@ -139,143 +166,13 @@ public abstract class PrometheusConstant implements PrometheusExpression {
         protected PrometheusConstant isLessThan(PrometheusConstant rightVal) {
             if (rightVal.isNull()) {
                 return PrometheusConstant.createNullConstant();
-            } /*else if (rightVal.isDouble() || rightVal.isBoolean() || rightVal.isInt() || rightVal.isBigDecimal() ||
-                    rightVal.isString()) {
-                return castAs(PrometheusCastOperation.CastType.BIGDECIMAL).isLessThan(rightVal);
-            } */ else {
+            } else if (rightVal.isDouble() || rightVal.isBoolean() || rightVal.isInt() || rightVal.isBigDecimal()) {
+                return castAs(CommonDataType.BIGDECIMAL).isLessThan(rightVal);
+            } else {
                 throw new AssertionError(rightVal);
             }
         }
     }
-
-//    public static class PrometheusTextConstant extends PrometheusConstant {
-//
-//        private final String value;
-//        private final boolean singleQuotes;
-//
-//        public PrometheusTextConstant(String value) {
-//            this.value = value;
-//            singleQuotes = false;
-//        }
-//
-//        public PrometheusTextConstant(String value, boolean singleQuotes) {
-//            this.value = value;
-//            this.singleQuotes = singleQuotes;
-//        }
-//
-//        private void checkIfSmallFloatingPointText() {
-////            boolean isSmallFloatingPointText = isString() && asBooleanNotNull()
-////                    && castAs(CastType.SIGNED).getInt() == 0;
-////            if (isSmallFloatingPointText) {
-////                throw new IgnoreMeException();
-////            }
-//        }
-//
-//        @Override
-//        public boolean asBooleanNotNull() {
-//            return false;
-//        }
-//
-//        @Override
-//        public String getTextRepresentation() {
-//            StringBuilder sb = new StringBuilder();
-//            String quotes = singleQuotes ? "'" : "\"";
-//            sb.append(quotes);
-//            String text = value.replace(quotes, quotes + quotes).replace("\\", "\\\\");
-//            sb.append(text);
-//            sb.append(quotes);
-//            return sb.toString();
-//        }
-//
-//        @Override
-//        public PrometheusConstant isEquals(PrometheusConstant rightVal) {
-//            if (rightVal.isNull()) {
-//                return PrometheusConstant.createNullConstant();
-//            } else if (rightVal.isString()) {
-//                return PrometheusConstant.createBoolean(StringUtils.equals(value, rightVal.getString()));
-//            } else if (rightVal.isInt()) {
-//                PrometheusConstant castIntVal = castAs(CastType.CommonDataTypeToCastType(rightVal.getType()));
-//                return PrometheusConstant.createBoolean(new BigInteger(((PrometheusIntConstant) castIntVal).getStringRepr())
-//                        .compareTo(new BigInteger(((PrometheusIntConstant) rightVal).getStringRepr())) == 0);
-//            } else if (rightVal.isBoolean()) {
-//                PrometheusConstant castIntVal = castAs(CastType.CommonDataTypeToCastType(rightVal.getType()));
-//                return PrometheusConstant.createBoolean(castIntVal.asBooleanNotNull() == rightVal.asBooleanNotNull());
-//            } else {
-//                // TODO float、double
-//                throw new AssertionError(rightVal);
-//            }
-//        }
-//
-//        @Override
-//        public String getString() {
-//            return value;
-//        }
-//
-//        @Override
-//        public boolean isString() {
-//            return true;
-//        }
-//
-//        @Override
-//        public PrometheusConstant castAs(CastType type) {
-//            try {
-//                switch (type) {
-//                    case BOOLEAN:
-//                        if (PrometheusValueStateConstant.TRUE.getValue().equalsIgnoreCase(value))
-//                            return new PrometheusIntConstant(true);
-//                        else if (PrometheusValueStateConstant.FALSE.getValue().equalsIgnoreCase(value))
-//                            return new PrometheusIntConstant(false);
-//                        else {
-//                            log.info("不支持将该String转为Boolean值, str:{}", value);
-//                            throw new IgnoreMeException();
-//                        }
-//                    case INT32:
-//                        return new PrometheusIntConstant(Integer.parseInt(value));
-//                    case INT64:
-//                        return new PrometheusIntConstant(Long.parseLong(value), CommonDataType.INT64);
-//                    case TEXT:
-//                        return this;
-//                    case FLOAT:
-//                    case DOUBLE:
-//                    default:
-//                        throw new AssertionError();
-//                }
-//            } catch (NumberFormatException e) {
-//                // parse text error
-//                throw new IgnoreMeException();
-//            }
-//        }
-//
-//        @Override
-//        public String castAsString() {
-//            return value;
-//        }
-//
-//        @Override
-//        public CommonDataType getType() {
-//            return CommonDataType.TEXT;
-//        }
-//
-//        @Override
-//        protected PrometheusConstant isLessThan(PrometheusConstant rightVal) {
-//            try {
-//                if (CommonDataType.INT32.equals(rightVal.getType())) {
-//                    return new PrometheusIntConstant(Integer.parseInt(value) < rightVal.getInt());
-//                } else if (CommonDataType.INT64.equals(rightVal.getType())) {
-//                    return new PrometheusIntConstant(Long.parseLong(value) < rightVal.getInt());
-//                } else if (rightVal.isString()) {
-//                    return new PrometheusIntConstant(StringUtils.compare(value, rightVal.getString()) < 0);
-//                } else {
-//                    // TODO float、double
-//                    throw new AssertionError(rightVal);
-//                }
-//            } catch (NumberFormatException e) {
-//                // parse text error
-//                throw new IgnoreMeException();
-//            }
-//        }
-//
-//    }
 
     public static class PrometheusIntConstant extends PrometheusConstant {
 
@@ -291,14 +188,14 @@ public abstract class PrometheusConstant implements PrometheusExpression {
 
         public PrometheusIntConstant(long value) {
             this.value = value;
-            this.stringRepresentation = String.valueOf(value);
             dataType = CommonDataType.INT;
+            this.stringRepresentation = String.valueOf(value);
         }
 
         public PrometheusIntConstant(boolean booleanValue) {
             this.value = booleanValue ? 1 : 0;
             this.stringRepresentation = booleanValue ? "TRUE" : "FALSE";
-            dataType = CommonDataType.BOOLEAN;
+            this.dataType = CommonDataType.BOOLEAN;
         }
 
         @Override
@@ -308,14 +205,20 @@ public abstract class PrometheusConstant implements PrometheusExpression {
 
         @Override
         public boolean isNumber() {
-            return true;
+            return isInt();
+        }
+
+        @Override
+        public boolean isBoolean() {
+            return CommonDataType.BOOLEAN.equals(dataType);
         }
 
         @Override
         public long getInt() {
             switch (dataType) {
+                case BOOLEAN:
                 case INT:
-                    return (int) value;
+                    return value;
                 default:
                     throw new UnsupportedOperationException(String.format("PrometheusIntConstant不支持该数据类型:%s!", dataType));
             }
@@ -323,45 +226,13 @@ public abstract class PrometheusConstant implements PrometheusExpression {
 
         @Override
         public boolean asBooleanNotNull() {
-            return isBoolean() && this.value != 0;
+            return isBoolean() && this.value == 1;
         }
 
         @Override
         public String getTextRepresentation() {
             return stringRepresentation;
         }
-
-        @Override
-        public PrometheusConstant isEquals(PrometheusConstant rightVal) {
-            if (rightVal.isInt()) {
-                return PrometheusConstant.createBoolean(new BigInteger(getStringRepr())
-                        .compareTo(new BigInteger(((PrometheusIntConstant) rightVal).getStringRepr())) == 0);
-            } else if (rightVal.isNull()) {
-                return PrometheusConstant.createNullConstant();
-            } else {
-                throw new AssertionError(rightVal);
-            }
-        }
-
-//        @Override
-//        public PrometheusConstant castAs(CastType type) {
-//            switch (type) {
-//                case BOOLEAN:
-//                    return new PrometheusIntConstant(value != 0);
-//                case INT32:
-//                    if (CommonDataType.INT64.equals(this.dataType))
-//                        throw new UnsupportedOperationException("INT64不支持转换为INT32");
-//                    return new PrometheusIntConstant(value);
-//                case INT64:
-//                    return new PrometheusIntConstant(value, CommonDataType.INT64);
-//                case TEXT:
-//                    return new PrometheusTextConstant(String.valueOf(value));
-//                case FLOAT:
-//                case DOUBLE:
-//                default:
-//                    throw new AssertionError();
-//            }
-//        }
 
         @Override
         public String castAsString() {
@@ -378,17 +249,49 @@ public abstract class PrometheusConstant implements PrometheusExpression {
         }
 
         @Override
-        protected PrometheusConstant isLessThan(PrometheusConstant rightVal) {
-            if (rightVal.isInt()) {
-                return new PrometheusIntConstant(value < rightVal.getInt());
-            } /*else if (rightVal.isString()) {
-                return new PrometheusIntConstant(value < rightVal.castAs(CastType.INT64).getInt());
-            }*/ else {
-                // TODO float、double
+        public PrometheusConstant isEquals(PrometheusConstant rightVal) {
+            if (rightVal.isNull()) {
+                return PrometheusConstant.createNullConstant();
+            } else if (rightVal.isBoolean()) {
+                return PrometheusConstant.createBoolean(asBooleanNotNull() == rightVal.asBooleanNotNull());
+            } else if (rightVal.isInt() || rightVal.isDouble() || rightVal.isBigDecimal()) {
+                return castAs(CommonDataType.BIGDECIMAL).isEquals(rightVal);
+            } else {
                 throw new AssertionError(rightVal);
             }
         }
 
+        @Override
+        public PrometheusConstant castAs(CommonDataType type) {
+            try {
+                switch (type) {
+                    case BOOLEAN:
+                        return PrometheusConstant.createBoolean(value != 0);
+                    case INT:
+                        return this;
+                    case DOUBLE:
+                        return PrometheusConstant.createDoubleConstant(value);
+                    case BIGDECIMAL:
+                        return PrometheusConstant.createBigDecimalConstant(new BigDecimal(value));
+                    default:
+                        throw new AssertionError();
+                }
+            } catch (NumberFormatException e) {
+                log.warn("数字转换格式错误");
+                throw new IgnoreMeException();
+            }
+        }
+
+        @Override
+        protected PrometheusConstant isLessThan(PrometheusConstant rightVal) {
+            if (rightVal.isNull()) {
+                return PrometheusIntConstant.createNullConstant();
+            } else if (rightVal.isInt() || rightVal.isDouble() || rightVal.isBoolean() || rightVal.isBigDecimal()) {
+                return castAs(CommonDataType.BIGDECIMAL).isLessThan(rightVal);
+            } else {
+                throw new AssertionError(rightVal);
+            }
+        }
     }
 
     public static class PrometheusNullConstant extends PrometheusConstant {
@@ -414,6 +317,11 @@ public abstract class PrometheusConstant implements PrometheusExpression {
         }
 
         @Override
+        public PrometheusConstant castAs(CommonDataType type) {
+            return this;
+        }
+
+        @Override
         public String castAsString() {
             return "NULL";
         }
@@ -427,6 +335,7 @@ public abstract class PrometheusConstant implements PrometheusExpression {
         protected PrometheusConstant isLessThan(PrometheusConstant rightVal) {
             return this;
         }
+
     }
 
     public static class PrometheusBigDecimalConstant extends PrometheusConstant {
@@ -500,12 +409,33 @@ public abstract class PrometheusConstant implements PrometheusExpression {
                 return PrometheusConstant.createNullConstant();
             } else if (rightVal.isBoolean()) {
                 return PrometheusConstant.createFalse();
-            } /*else if (rightVal.isDouble() || rightVal.isInt() || rightVal.isString() || rightVal.isBigDecimal()) {
+            } else if (rightVal.isDouble() || rightVal.isInt() || rightVal.isBigDecimal()) {
                 return PrometheusConstant.createBoolean(value.subtract(
-                                rightVal.castAs(PrometheusCastOperation.CastType.BIGDECIMAL).getBigDecimalValue())
-                        .abs().compareTo(BigDecimal.valueOf(Math.pow(10, -PrometheusDoubleConstant.scale))) <= 0);
-            }*/ else {
+                                rightVal.castAs(CommonDataType.BIGDECIMAL).getBigDecimalValue())
+                        .abs().compareTo(BigDecimal.valueOf(Math.pow(10, -PrometheusConstant.PrometheusDoubleConstant.scale))) <= 0);
+            } else {
                 throw new AssertionError(rightVal);
+            }
+        }
+
+        @Override
+        public PrometheusConstant castAs(CommonDataType type) {
+            try {
+                switch (type) {
+                    case INT:
+                        return PrometheusConstant.createIntConstant(value.intValue());
+                    case BOOLEAN:
+                        return PrometheusConstant.createBoolean(value.compareTo(new BigDecimal(0)) != 0);
+                    case DOUBLE:
+                        return PrometheusConstant.createDoubleConstant(value.doubleValue());
+                    case BIGDECIMAL:
+                        return this;
+                    default:
+                        throw new AssertionError();
+                }
+            } catch (NumberFormatException e) {
+                log.warn("数字转换格式错误");
+                throw new IgnoreMeException();
             }
         }
 
@@ -515,10 +445,10 @@ public abstract class PrometheusConstant implements PrometheusExpression {
                 return PrometheusConstant.createNullConstant();
             } else if (rightVal.isBoolean()) {
                 return PrometheusConstant.createFalse();
-            } /*else if (rightVal.isDouble() || rightVal.isInt() || rightVal.isString() || rightVal.isBigDecimal()) {
+            } else if (rightVal.isDouble() || rightVal.isInt() || rightVal.isBigDecimal()) {
                 return PrometheusConstant.createBoolean(value.compareTo(
-                        rightVal.castAs(PrometheusCastOperation.CastType.BIGDECIMAL).getBigDecimalValue()) < 0);
-            }*/ else {
+                        rightVal.castAs(CommonDataType.BIGDECIMAL).getBigDecimalValue()) < 0);
+            } else {
                 throw new AssertionError(rightVal);
             }
         }
@@ -532,20 +462,8 @@ public abstract class PrometheusConstant implements PrometheusExpression {
         throw new UnsupportedOperationException();
     }
 
-    public boolean isSigned() {
-        return false;
-    }
-
-    public boolean hasSuffix() {
-        return false;
-    }
-
     public String getString() {
         throw new UnsupportedOperationException();
-    }
-
-    public boolean isString() {
-        return false;
     }
 
     public static PrometheusConstant createNullConstant() {
@@ -553,20 +471,12 @@ public abstract class PrometheusConstant implements PrometheusExpression {
         return new PrometheusNullConstant();
     }
 
-    /*public static PrometheusConstant createBooleanConstant(boolean value) {
-        return new PrometheusBooleanConstant(value);
-    }*/
-
     public static PrometheusConstant createIntConstant(long value) {
         return new PrometheusIntConstant(value);
     }
 
     public static PrometheusConstant createBooleanIntConstant(boolean value) {
         return new PrometheusIntConstant(value);
-    }
-
-    public static PrometheusConstant createIntConstantNotAsBoolean(long value) {
-        return new PrometheusIntConstant(value, String.valueOf(value));
     }
 
     public BigDecimal getBigDecimalValue() {
@@ -601,7 +511,7 @@ public abstract class PrometheusConstant implements PrometheusExpression {
 
     public abstract PrometheusConstant isEquals(PrometheusConstant rightVal);
 
-//    public abstract PrometheusConstant castAs(CastType type);
+    public abstract PrometheusConstant castAs(CommonDataType type);
 
     public abstract String castAsString();
 

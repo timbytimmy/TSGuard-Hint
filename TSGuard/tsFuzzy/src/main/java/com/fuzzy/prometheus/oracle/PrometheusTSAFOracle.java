@@ -316,6 +316,7 @@ public class PrometheusTSAFOracle
             try {
                 PrometheusExpression predicateExpression =
                         new PrometheusExpressionGenerator(globalState).setColumns(columns).generateExpression();
+                // TODO
                 // 将表达式纠正为BOOLEAN类型
                 PrometheusExpression rectifiedPredicateExpression = predicateExpression;
 
@@ -357,7 +358,7 @@ public class PrometheusTSAFOracle
         this.predicateSequence = predicateSequence;
         return result;
     }
-//
+
 //    private void generateTimeWindowClause() {
 //        selectStatement.setAggregationType(PrometheusAggregationType.getRandomAggregationType());
 //

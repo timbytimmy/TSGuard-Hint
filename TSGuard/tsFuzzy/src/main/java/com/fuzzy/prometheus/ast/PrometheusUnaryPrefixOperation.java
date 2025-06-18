@@ -20,19 +20,14 @@ public class PrometheusUnaryPrefixOperation extends UnaryOperatorNode<Prometheus
         MINUS("-") {
             @Override
             public PrometheusConstant applyNotNull(PrometheusConstant expr) {
-                if (expr.isString() || expr.isBoolean()) throw new IgnoreMeException();
+                if (expr.isBoolean()) throw new IgnoreMeException();
                 else if (expr.isInt()) {
-//                    if (!expr.isSigned()) throw new IgnoreMeException();
-//                    if (PrometheusDataType.INT.equals(expr.getType()))
-//                        return PrometheusConstant.createInt32Constant(-expr.getInt());
-//                    else if (PrometheusDataType.BIGINT.equals(expr.getType()))
-//                        return PrometheusConstant.createInt64Constant(-expr.getInt());
-//                    else throw new AssertionError(expr);
                     return PrometheusConstant.createIntConstant(-expr.getInt());
-                } else if (expr.isDouble()) return PrometheusConstant.createDoubleConstant(-expr.getDouble());
-                else if (expr.isBigDecimal()) return PrometheusConstant.createBigDecimalConstant(
-                        expr.getBigDecimalValue().negate());
-                else throw new AssertionError(expr);
+                } else if (expr.isDouble()) {
+                    return PrometheusConstant.createDoubleConstant(-expr.getDouble());
+                } else if (expr.isBigDecimal()) {
+                    return PrometheusConstant.createBigDecimalConstant(expr.getBigDecimalValue().negate());
+                } else throw new AssertionError(expr);
 
             }
         };

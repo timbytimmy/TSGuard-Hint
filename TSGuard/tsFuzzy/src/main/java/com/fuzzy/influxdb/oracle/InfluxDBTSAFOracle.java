@@ -43,7 +43,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class InfluxDBTSAFOracle
-        extends TimeSeriesAlgebraFrameworkBase<InfluxDBGlobalState, InfluxDBRowValue, InfluxDBExpression, SQLConnection> {
+        extends TimeSeriesAlgebraFrameworkBase<InfluxDBGlobalState, InfluxDBExpression, SQLConnection> {
 
     // TODO 插入数据空间概率分布
     // 数值和时间戳具备二元函数关系（能否知微见著，反映出各种不规律数值空间？）

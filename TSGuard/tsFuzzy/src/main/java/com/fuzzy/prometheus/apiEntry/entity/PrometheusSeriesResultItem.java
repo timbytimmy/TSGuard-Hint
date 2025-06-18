@@ -11,18 +11,17 @@ import java.util.Objects;
 @Data
 public class PrometheusSeriesResultItem {
     @JSONField(name = "__name__")
-    private String metricName;
-    @JSONField(name = "database")
     private String database;
     @JSONField(name = "table")
     private String table;
-    @JSONField(name = "exported_job")
+    @JSONField(name = "timeSeries")
     private String column;
 
     public PrometheusColumn transToColumn() {
-        PrometheusDataType dataType;
-        if (metricName.endsWith("_total")) dataType = PrometheusDataType.COUNTER;
-        else dataType = PrometheusDataType.GAUGE;
+        // TODO 列类型的确定，暂定测试 GAUGE 类型
+        PrometheusDataType dataType = PrometheusDataType.GAUGE;
+//        if (database.endsWith("_total")) dataType = PrometheusDataType.COUNTER;
+//        else dataType = PrometheusDataType.GAUGE;
         return new PrometheusColumn(column, false, dataType);
     }
 

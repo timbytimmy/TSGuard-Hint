@@ -12,7 +12,7 @@ import java.util.*;
 
 public class SamplingFrequency {
     private int seed;
-    // 最初始时间戳
+    // 全局最初始时间戳
     private Long startTimestamp;
     // 采样周期时间长度, 单位ms
     private Long samplingPeriod;

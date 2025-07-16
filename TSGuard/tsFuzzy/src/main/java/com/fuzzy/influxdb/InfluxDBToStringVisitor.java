@@ -199,16 +199,55 @@ public class InfluxDBToStringVisitor extends ToStringVisitor<InfluxDBExpression>
         sb.append(")");
     }
 
+//    @Override
+//    public void visit(InfluxDBBinaryArithmeticOperation op) {
+//        sb.append("(");
+//        visit(op.getLeft());
+//        sb.append(") ");
+//        sb.append(op.getOp().getTextRepresentation());
+//        sb.append(" (");
+//        visit(op.getRight());
+//        sb.append(")");
+//    }
+
     @Override
     public void visit(InfluxDBBinaryArithmeticOperation op) {
+        // get rid of “(const + const)” and “(const - const)” so we never get “(1234)+(5678)”
+        if (!isAbstractExpression
+                && op.getLeft()  instanceof InfluxDBConstant
+                && op.getRight() instanceof InfluxDBConstant) {
+            InfluxDBConstant l = (InfluxDBConstant) op.getLeft();
+            InfluxDBConstant r = (InfluxDBConstant) op.getRight();
+            String sym = op.getOp().getTextRepresentation();
+            try {
+                java.math.BigDecimal lv = l.getBigDecimalValue();
+                java.math.BigDecimal rv = r.getBigDecimalValue();
+                java.math.BigDecimal res;
+                if ("+".equals(sym)) {
+                    res = lv.add(rv);
+                } else if ("-".equals(sym)) {
+                    res = lv.subtract(rv);
+                } else {
+                    throw new IllegalArgumentException("unsupported fold: " + sym);
+                }
+                // drop trailing “.0” on integers
+                String out = res.stripTrailingZeros().toPlainString();
+                sb.append(out);
+                return;
+            } catch (Exception e) {
+                // fallback to normal printing
+            }
+        }
+        // non‐constant or other ops: fall back
         sb.append("(");
         visit(op.getLeft());
-        sb.append(") ");
-        sb.append(op.getOp().getTextRepresentation());
-        sb.append(" (");
+        sb.append(") ")
+                .append(op.getOp().getTextRepresentation())
+                .append(" (");
         visit(op.getRight());
         sb.append(")");
     }
+
 
     @Override
     public void visit(InfluxDBOrderByTerm op) {

@@ -9,6 +9,7 @@ import com.benchmark.influxdb.hint.ResultComparator;
 import com.fuzzy.GlobalState;
 import com.fuzzy.Reproducer;
 import com.fuzzy.SQLConnection;
+import com.fuzzy.common.constant.GlobalConstant;
 import com.fuzzy.common.oracle.TestOracle;
 import com.fuzzy.common.query.ExpectedErrors;
 import com.fuzzy.common.query.Query;
@@ -40,14 +41,38 @@ public class InfluxDBHintOracle implements TestOracle<InfluxDBGlobalState> {
         this.globalState = state;
     }
 
+    //summary of hint mismatches
+    private void appendSummary(String hint, int mismatchesCount) {
+        String summaryLine = String.format(
+                "%s  hint=<%s>  mismatches=%d",
+                globalState.getDatabaseName(),
+                hint,
+                mismatchesCount
+        );
+        try {
+            Files.write(
+                    CENTRAL_HINT_LOG,
+                    Collections.singletonList(summaryLine),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND
+            );
+        } catch (IOException ioe) {
+            log.error("Could not write to hint-mismatches.log", ioe);
+        }
+    }
+
+
     public static final AtomicInteger nrHintQueries = new AtomicInteger();
     public static final AtomicInteger nrHintMismatches = new AtomicInteger();
 
-    private static final Path CENTRAL_HINT_LOG = Paths.get("logs","hint-mismatches.log");
+    private static final Path CENTRAL_HINT_LOG = Paths.get("logs", GlobalConstant.INFLUXDB_DATABASE_NAME, "hint-mismatches.log");
+
     static {
         try {
             Files.createDirectories(CENTRAL_HINT_LOG.getParent());
-            if (! Files.exists(CENTRAL_HINT_LOG)) {
+            if (Files.exists(CENTRAL_HINT_LOG)) {
+                Files.write(CENTRAL_HINT_LOG, new byte[0], StandardOpenOption.TRUNCATE_EXISTING);
+            } else {
                 Files.createFile(CENTRAL_HINT_LOG);
             }
         } catch (IOException e) {
@@ -154,6 +179,7 @@ public class InfluxDBHintOracle implements TestOracle<InfluxDBGlobalState> {
         } catch (Exception e) {
             // Syntax error in hintedFlux → record and skip
             globalState.getLogger().writeSyntaxErrorQuery("Invalid query (hinted): " + hintedQueryString + ";");
+            appendSummary(hint, 0);
             return;
         }
         List<DBVal> actual = actualRs.getDBVals();
@@ -163,6 +189,7 @@ public class InfluxDBHintOracle implements TestOracle<InfluxDBGlobalState> {
         try {
             expected = ExpectedResultGenerator.apply(baseline, hint);
         } catch (NullPointerException npe) {
+            appendSummary(hint, 0);
             return;
         }
 
@@ -171,41 +198,40 @@ public class InfluxDBHintOracle implements TestOracle<InfluxDBGlobalState> {
         try {
             mismatches = ResultComparator.compare(expected, actual);
         } catch (Exception compareErr) {
+            appendSummary(hint, 0);
             return;
         }
 
-        if (mismatches.isEmpty()){
+//        String summaryLine = String.format(
+//                "%s  hint=<%s>  mismatches=%d",
+//                globalState.getDatabaseName(),
+//                hint,
+//                mismatches.size()
+//        );
+
+//        try{
+//            Files.write(
+//                    CENTRAL_HINT_LOG,
+//                    Collections.singletonList(summaryLine),
+//                    StandardOpenOption.CREATE,
+//                    StandardOpenOption.APPEND
+//            );
+//        } catch (IOException ioe){
+//            log.error("Could not write to hint-mismatches.log", ioe);
+//        }
+
+        if (!mismatches.isEmpty()){
+            log.error("Bucket “{}” – hint “{}” produced unexpected results:",
+                    globalState.getDatabaseName(), hint);
+            mismatches.forEach(m -> log.error("  • " + m));
+            throw new AssertionError("Flux hint mismatch in bucket “"
+                    + globalState.getDatabaseName() + "”");
+        } else {
             globalState.getLogger()
                     .writeCurrent("Hint‐Based: no mismatches found in bucket “"
                             + globalState.getDatabaseName() + "”");
         }
 
-        if (!mismatches.isEmpty()) {
-            log.error("Bucket “{}” – hint “{}” produced unexpected results:",
-                    globalState.getDatabaseName(), hint);
-            mismatches.forEach(m -> log.error("  • " + m));
-
-            // Build a single‐line summary, then append to the central log file
-            String line = String.format(
-                    "%s  hint=<%s>  mismatches=%s",
-                    globalState.getDatabaseName(),
-                    hint,
-                    mismatches.toString()
-            );
-            try {
-                Files.write(
-                        CENTRAL_HINT_LOG,
-                        Collections.singletonList(line),
-                        StandardOpenOption.CREATE,
-                        StandardOpenOption.APPEND
-                );
-            } catch (IOException ioe) {
-                log.error("Could not write to hint-mismatches.log", ioe);
-            }
-
-            throw new AssertionError("Flux hint mismatch in bucket “"
-                    + globalState.getDatabaseName() + "”");
-        }
 
         try {
             summary = mismatches.isEmpty()

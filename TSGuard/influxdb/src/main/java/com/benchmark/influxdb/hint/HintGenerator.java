@@ -19,7 +19,7 @@ public class HintGenerator {
     private final Random random = new Random();
     // Maximum values for numeric hints
     private final int maxLimit = 30;
-    private final int maxOffset = 10;
+    private final int maxOffset = 5;
 
     /**
      * Returns a randomly chosen hint, formatted with random parameters where needed.

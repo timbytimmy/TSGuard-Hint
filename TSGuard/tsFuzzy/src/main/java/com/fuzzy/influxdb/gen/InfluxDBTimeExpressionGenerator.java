@@ -139,9 +139,13 @@ public class InfluxDBTimeExpressionGenerator extends UntypedExpressionGenerator<
         return true;
     }
 
+    //setting the time range of insert data
     @Override
     public InfluxDBExpression generateConstant() {
-        return InfluxDBConstant.createUnsignedIntConstant(state.getRandomTimestamp());
+        long start = state.getOptions().getStartTimestampOfTSData();
+        long end = start + 1000;
+        long ts = state.getRandomly().getLong(start, end);
+        return InfluxDBConstant.createUnsignedIntConstant(ts);
     }
 
     @Override
@@ -152,8 +156,8 @@ public class InfluxDBTimeExpressionGenerator extends UntypedExpressionGenerator<
     @Override
     public InfluxDBExpression generateColumn() {
         InfluxDBColumn c = Randomly.fromList(columns);
-        return InfluxDBColumnReference.create(c, InfluxDBConstant.createUnsignedIntConstant(
-                state.getOptions().getStartTimestampOfTSData()));
+        long start = state.getOptions().getStartTimestampOfTSData();
+        return InfluxDBColumnReference.create(c, InfluxDBConstant.createUnsignedIntConstant(start));
     }
 
     @Override

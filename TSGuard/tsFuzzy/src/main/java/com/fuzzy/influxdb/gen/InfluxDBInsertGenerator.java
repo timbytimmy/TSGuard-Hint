@@ -80,7 +80,17 @@ public class InfluxDBInsertGenerator {
             sb.append(table.getRandomSeries()).append(" ");
             // timestamp -> 按照采样间隔顺序插入
             long nextTimestamp = timestamps.get(row);
+
+            //adding NULL value to DB
+            int skipField = fieldColumns.size() > 1
+                    ? Randomly.getInteger(0, fieldColumns.size() - 1)
+                    : -1;
+
             for (int c = 0; c < fieldColumns.size(); c++) {
+                if(c == skipField){
+                    continue;
+                }
+
                 InfluxDBSchema.InfluxDBDataType columnType = fieldColumns.get(c).getType();
                 String columnName = fieldColumns.get(c).getName();
                 sb.append(columnName)
@@ -147,7 +157,18 @@ public class InfluxDBInsertGenerator {
                 sb.append(" ");
             }
 
+            //adding NULL value to DB
+            int skipField = fieldColumns.size() > 1
+                    ? Randomly.getInteger(0, fieldColumns.size() - 1)
+                    : -1;
+
             for (int c = 0; c < fieldColumns.size(); c++) {
+
+                //adding NULL to DB
+                if(c == skipField){
+                    continue;
+                }
+
                 sb.append(fieldColumns.get(c).getName())
                         .append("=")
                         .append(InfluxDBVisitor.asString(

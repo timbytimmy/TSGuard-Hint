@@ -508,7 +508,7 @@ public final class Randomly {
     }
 
     // [left, right)
-    public int getInteger(int left, int right) {
+    public static int getInteger(int left, int right) {
         if (left == right) {
             return left;
         }

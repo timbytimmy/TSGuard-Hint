@@ -508,7 +508,7 @@ public final class Randomly {
     }
 
     // [left, right)
-    public int getInteger(int left, int right) {
+    public static int getInteger(int left, int right) {
         if (left == right) {
             return left;
         }
@@ -516,7 +516,7 @@ public final class Randomly {
     }
 
     // TODO redundant?
-    public long getLong(long left, long right) {
+    public static long getLong(long left, long right) {
         if (left == right) {
             return left;
         }

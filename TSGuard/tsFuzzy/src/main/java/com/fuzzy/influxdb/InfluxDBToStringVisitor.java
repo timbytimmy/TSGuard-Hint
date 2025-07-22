@@ -156,8 +156,11 @@ public class InfluxDBToStringVisitor extends ToStringVisitor<InfluxDBExpression>
                 if (i != 0) {
                     sb.append(", ");
                 }
-                visit(s.getOrderByExpressions().get(i));
+                //visit(s.getOrderByExpressions().get(i));
+                visit(orderBys.get(i));
             }
+        } else {
+            sb.append(" ORDER BY time ASC");
         }
         if (s.getLimitClause() != null) {
             sb.append(" LIMIT ");
@@ -167,7 +170,7 @@ public class InfluxDBToStringVisitor extends ToStringVisitor<InfluxDBExpression>
             sb.append(" OFFSET ");
             visit(s.getOffsetClause());
         }
-        // TODO SOFFSET Clause
+
     }
 
     @Override

@@ -110,10 +110,10 @@ public class InfluxdbDBApiEntry implements ApiEntry {
         this.hint = hint == null ? "" : hint.trim();
     }
 
-    private List<FluxTable> runFluxWithHint(String baseFlux, String hint) {
-        String fluxWithHint = FluxHintInjector.applyHint(baseFlux, hint);
-        return influxDBClient.getQueryApi().query(fluxWithHint);
-    }
+//    private List<FluxTable> runFluxWithHint(String baseFlux, String hint) {
+//        String fluxWithHint = FluxHintInjector.applyHint(baseFlux, hint);
+//        return influxDBClient.getQueryApi().query(fluxWithHint);
+//    }
 
     //for testing only
     public boolean createBucket(String name, long retentionPeriodMs) {
@@ -386,7 +386,8 @@ public class InfluxdbDBApiEntry implements ApiEntry {
 
         //QueryApi queryApi = influxDBClient.getQueryApi();
         //List<FluxTable> tables = queryApi.query(fluxQuery);
-        List<FluxTable> tables = runFluxWithHint(fluxQuery, this.hint);
+        //List<FluxTable> tables = runFluxWithHint(fluxQuery, this.hint);
+        List<FluxTable> tables = influxDBClient.getQueryApi().query(fluxQuery);
 
         Hashtable<String, SortedMap<Long, DBVal>> dbValHashtable = ParseData.parseFluxTableToDBVal(tables,
                 dbValParam.getTagName());
@@ -493,7 +494,8 @@ public class InfluxdbDBApiEntry implements ApiEntry {
                 .flatMap(m -> m.values().stream())
                 .collect(Collectors.toList());
 
-        List<FluxTable> tables = runFluxWithHint(fluxQuery, this.hint);
+        //List<FluxTable> tables = runFluxWithHint(fluxQuery, this.hint);
+        List<FluxTable> tables = influxDBClient.getQueryApi().query(fluxQuery);
 
         Hashtable<String, SortedMap<Long, DBVal>> dbValHashtable = ParseData.parseFluxTableToDBVal(tables,tagName);
         List<DBVal> actual = ParseData
@@ -727,7 +729,8 @@ public class InfluxdbDBApiEntry implements ApiEntry {
 
         //QueryApi queryApi = influxDBClient.getQueryApi();
         //List<FluxTable> tables = queryApi.query(fluxQuery);
-        List<FluxTable> tables = runFluxWithHint(fluxQuery, this.hint);
+        //List<FluxTable> tables = runFluxWithHint(fluxQuery, this.hint);
+        List<FluxTable> tables = influxDBClient.getQueryApi().query(fluxQuery);
 
         Hashtable<String, SortedMap<Long, DBVal>> dbValHashtable = ParseData.parseFluxTableToDBVal(tables,
                 dbValParam.getTagName());
@@ -859,7 +862,8 @@ public class InfluxdbDBApiEntry implements ApiEntry {
             //QueryApi queryApi = influxDBClient.getQueryApi();
             log.info(fluxQuery);
             //List<FluxTable> tables = queryApi.query(fluxQuery);
-            List<FluxTable> tables = runFluxWithHint(fluxQuery, this.hint);
+            //List<FluxTable> tables = runFluxWithHint(fluxQuery, this.hint);
+            List<FluxTable> tables = influxDBClient.getQueryApi().query(fluxQuery);
 
             log.info(fluxQuery);
             Hashtable<String, SortedMap<Long, DBVal>> dbValHashtable = ParseData.parseFluxTableToDBVal(tables,
@@ -924,7 +928,8 @@ public class InfluxdbDBApiEntry implements ApiEntry {
 
             //QueryApi queryApi = influxDBClient.getQueryApi();
             //List<FluxTable> tables = queryApi.query(fluxQuery);
-            List<FluxTable> tables = runFluxWithHint(fluxQuery, this.hint);
+            //List<FluxTable> tables = runFluxWithHint(fluxQuery, this.hint);
+            List<FluxTable> tables = influxDBClient.getQueryApi().query(fluxQuery);
 
             Hashtable<String, SortedMap<Long, DBVal>> dbValHashtable = ParseData.parseFluxTableToDBVal(tables,
                     dbValParam.getTagName());

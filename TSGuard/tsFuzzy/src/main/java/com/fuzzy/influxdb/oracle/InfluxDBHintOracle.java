@@ -167,7 +167,7 @@ public class InfluxDBHintOracle implements TestOracle<InfluxDBGlobalState> {
 
         //inject hint
         String hintedFlux = FluxHintInjector.applyHint(baseFlux, hint);
-        String hintedQueryString = "q=" + hintedFlux;
+        String hintedQueryString = "q=" + FluxHintInjector.applyHint(baseFlux, hint);
 
         //log query with hint
         globalState.getLogger().writeCurrent(hintedQueryString);

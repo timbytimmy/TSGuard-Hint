@@ -24,7 +24,7 @@ import java.util.Map;
 @Slf4j
 public class InfluxDBInsertGenerator {
 
-    public static final int SAMPLING_NUMBER = 10;
+    public static final int SAMPLING_NUMBER = 100;
     private final InfluxDBTable table;
     private final StringBuilder sb = new StringBuilder();
     private final ExpectedErrors errors = new ExpectedErrors();
@@ -88,6 +88,10 @@ public class InfluxDBInsertGenerator {
 
             for (int c = 0; c < fieldColumns.size(); c++) {
                 if(c == skipField){
+                    //will insert NULL value
+                    sb.append(fieldColumns.get(c).getName())
+                            .append("=")
+                            .append(",");
                     continue;
                 }
 
@@ -135,63 +139,102 @@ public class InfluxDBInsertGenerator {
         }
     }
 
+//    public void randomGenerateInsert() {
+//        InfluxDBExpressionGenerator gen = new InfluxDBExpressionGenerator(globalState);
+//        List<InfluxDBColumn> fieldColumns = table.getFieldColumns();
+//
+//        int nrRows = globalState.getRandomly().getInteger(1, 1 + Randomly.smallNumber());
+//        for (int row = 0; row < nrRows; row++) {
+//            // 针对旧Tag插入新点值
+//            if (Randomly.getBoolean())
+//                sb.append(table.getRandomSeries())
+//                        .append(" ");
+//            else {
+//                // 插入新Tag
+//                List<InfluxDBColumn> tagColumns = table.getTagColumns();
+//                sb.append(table.getName());
+//                tagColumns.forEach(tagColumn -> {
+//                    sb.append(",").append(tagColumn.getName()).append("=")
+//                            .append(InfluxDBVisitor.asString(
+//                                    gen.generateConstantForInfluxDBDataType(InfluxDBSchema.InfluxDBDataType.STRING)));
+//                });
+//                sb.append(" ");
+//            }
+//
+//            //adding NULL value to DB
+//            int skipField = fieldColumns.size() > 1
+//                    ? Randomly.getInteger(0, fieldColumns.size() - 1)
+//                    : -1;
+//
+//            for (int c = 0; c < fieldColumns.size(); c++) {
+//
+//                //adding NULL to DB
+//                if(c == skipField){
+//                    continue;
+//                }
+//
+//                sb.append(fieldColumns.get(c).getName())
+//                        .append("=")
+//                        .append(InfluxDBVisitor.asString(
+//                                gen.generateConstantForInfluxDBDataType(fieldColumns.get(c).getType())))
+//                        .append(",");
+//            }
+//            // timestamp -> 按照采样间隔顺序插入 or 随机生成(起始时间戳 -> 至今)
+//            String databaseAndTableName = generateHashKey(globalState.getDatabaseName(), table.getName());
+//            if (isRandomlyGenerateTimestamp.get(databaseAndTableName)) {
+//                sb.deleteCharAt(sb.length() - 1)
+//                        .append(" ")
+//                        .append(globalState.getRandomTimestamp())
+//                        .append("\n");
+//            } else {
+//                long nextTimestamp = globalState.getNextSampleTimestamp(lastTimestamp.get(databaseAndTableName));
+//                sb.deleteCharAt(sb.length() - 1)
+//                        .append(" ")
+//                        .append(nextTimestamp)
+//                        .append("\n");
+//                lastTimestamp.put(databaseAndTableName, nextTimestamp);
+//            }
+//        }
+//    }
+
+    //new one with multiple timestamp each point
     public void randomGenerateInsert() {
         InfluxDBExpressionGenerator gen = new InfluxDBExpressionGenerator(globalState);
         List<InfluxDBColumn> fieldColumns = table.getFieldColumns();
+        List<InfluxDBColumn> tagColumns   = table.getTagColumns();
 
-        int nrRows = globalState.getRandomly().getInteger(1, 1 + Randomly.smallNumber());
-        for (int row = 0; row < nrRows; row++) {
-            // 针对旧Tag插入新点值
-            if (Randomly.getBoolean())
-                sb.append(table.getRandomSeries())
-                        .append(" ");
-            else {
-                // 插入新Tag
-                List<InfluxDBColumn> tagColumns = table.getTagColumns();
-                sb.append(table.getName());
-                tagColumns.forEach(tagColumn -> {
-                    sb.append(",").append(tagColumn.getName()).append("=")
-                            .append(InfluxDBVisitor.asString(
-                                    gen.generateConstantForInfluxDBDataType(InfluxDBSchema.InfluxDBDataType.STRING)));
-                });
-                sb.append(" ");
-            }
+        // 1) pick how many points per series: at least 3, up to 6
+        int nrRows = globalState.getRandomly().getInteger(30, 100);
 
-            //adding NULL value to DB
-            int skipField = fieldColumns.size() > 1
-                    ? Randomly.getInteger(0, fieldColumns.size() - 1)
-                    : -1;
+        // 2) build a single series key (measurement + tags)
+        StringBuilder prefix = new StringBuilder(table.getName());
+        for (InfluxDBColumn tag : tagColumns) {
+            prefix.append(",")
+                    .append(tag.getName())
+                    .append("=")
+                    .append(InfluxDBVisitor.asString(
+                            gen.generateConstantForInfluxDBDataType(InfluxDBSchema.InfluxDBDataType.STRING)));
+        }
+        String seriesPrefix = prefix.toString();
 
-            for (int c = 0; c < fieldColumns.size(); c++) {
-
-                //adding NULL to DB
-                if(c == skipField){
-                    continue;
-                }
-
-                sb.append(fieldColumns.get(c).getName())
+        // 3) emit nrRows lines, all sharing that seriesPrefix
+        for (int i = 0; i < nrRows; i++) {
+            sb.append(seriesPrefix).append(" ");
+            // append all field=value,
+            for (InfluxDBColumn f : fieldColumns) {
+                sb.append(f.getName())
                         .append("=")
                         .append(InfluxDBVisitor.asString(
-                                gen.generateConstantForInfluxDBDataType(fieldColumns.get(c).getType())))
+                                gen.generateConstantForInfluxDBDataType(f.getType())))
                         .append(",");
             }
-            // timestamp -> 按照采样间隔顺序插入 or 随机生成(起始时间戳 -> 至今)
-            String databaseAndTableName = generateHashKey(globalState.getDatabaseName(), table.getName());
-            if (isRandomlyGenerateTimestamp.get(databaseAndTableName)) {
-                sb.deleteCharAt(sb.length() - 1)
-                        .append(" ")
-                        .append(globalState.getRandomTimestamp())
-                        .append("\n");
-            } else {
-                long nextTimestamp = globalState.getNextSampleTimestamp(lastTimestamp.get(databaseAndTableName));
-                sb.deleteCharAt(sb.length() - 1)
-                        .append(" ")
-                        .append(nextTimestamp)
-                        .append("\n");
-                lastTimestamp.put(databaseAndTableName, nextTimestamp);
-            }
+            // drop trailing comma, add a fresh timestamp
+            long ts = globalState.getRandomTimestamp();
+            sb.setLength(sb.length() - 1);
+            sb.append(" ").append(ts).append("\n");
         }
     }
+
 
     public static Long getLastTimestamp(String databaseName, String tableName) {
         return lastTimestamp.get(generateHashKey(databaseName, tableName));

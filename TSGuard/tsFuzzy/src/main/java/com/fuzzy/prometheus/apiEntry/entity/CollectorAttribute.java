@@ -1,59 +1,142 @@
 package com.fuzzy.prometheus.apiEntry.entity;
 
-import com.fuzzy.Randomly;
+import build.buf.gen.io.prometheus.write.v2.Request;
+import build.buf.gen.io.prometheus.write.v2.Sample;
+import build.buf.gen.io.prometheus.write.v2.TimeSeries;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusDataType;
 import com.fuzzy.prometheus.constant.PrometheusLabelConstant;
-import io.prometheus.client.Collector;
-import io.prometheus.client.Counter;
-import io.prometheus.client.Gauge;
 import lombok.Data;
+import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Data
 public class CollectorAttribute {
     private PrometheusDataType dataType;
     private String metricName;
-    private String help;
-    private String databaseName;
     private String tableName;
-    private double doubleValue;
-    private int intValue;
+    private List<Double> doubleValues;
+    //    private List<Integer> intValues;
+    private List<Long> timestamps;
+    // nullable
+    private String timeSeriesName;
+    private Map<String, String> labels;
+    private String help;
 
-    public Collector transToCollector() {
-        switch (this.dataType) {
-            case COUNTER:
-                Counter counter = Counter.build()
-                        .name(this.metricName)
-                        .labelNames(PrometheusLabelConstant.DATABASE.getLabel(), PrometheusLabelConstant.TABLE.getLabel())
-                        .help(this.help)
-                        .register();
-                counter.labels(this.databaseName, this.tableName).inc(intValue);
-                return counter;
-            case GAUGE:
-                Gauge gauge = Gauge.build()
-                        .name(this.metricName)
-                        .labelNames(PrometheusLabelConstant.DATABASE.getLabel(), PrometheusLabelConstant.TABLE.getLabel())
-                        .help(this.help)
-                        .register();
-                gauge.labels(this.databaseName, this.tableName).set(this.doubleValue);
-                return gauge;
-            case HISTOGRAM:
-            case SUMMARY:
-            default:
-                return null;
-        }
+    public CollectorAttribute() {
+        this.doubleValues = new ArrayList<>();
+//        this.intValues = new ArrayList<>();
+        this.timestamps = new ArrayList<>();
     }
 
-    public void randomInitValue(Randomly randomly) {
-        switch (this.dataType) {
-            case COUNTER:
-                this.intValue = randomly.getInteger(1, Integer.MAX_VALUE);
-                break;
-            case GAUGE:
-                this.doubleValue = randomly.getInfiniteDouble();
-                break;
-            case HISTOGRAM:
-            case SUMMARY:
-            default:
-        }
+    public void randomInitValue(long startTimestamp) {
+//        switch (this.dataType) {
+//            case COUNTER:
+//                this.doubleValues = Collections.singletonList((double) randomly.getInteger(1, Integer.MAX_VALUE));
+//                break;
+//            case GAUGE:
+//                this.doubleValues = Collections.singletonList(randomly.getInfiniteDouble());
+//                break;
+//            case HISTOGRAM:
+//            case SUMMARY:
+//            default:
+//        }
+        // 初始化表时间: 测试区间左边界 startTimestamp - 100s
+        this.doubleValues = Collections.singletonList(0.0);
+        this.timestamps = Collections.singletonList(startTimestamp - 100 * 1000L);
     }
+
+    public void defaultValue() {
+//        switch (this.dataType) {
+//            case COUNTER:
+//                this.intValues = Collections.singletonList(0);
+//                break;
+//            case GAUGE:
+//                this.doubleValues = Collections.singletonList(0.0);
+//                break;
+//            case HISTOGRAM:
+//            case SUMMARY:
+//            default:
+//        }
+        this.doubleValues = Collections.singletonList(0.0);
+        // 初始时间戳: 当前值 - 30s
+        this.timestamps = Collections.singletonList(System.currentTimeMillis() - 30 * 1000L);
+    }
+
+    public Request createRequestForRemoteWrite() {
+        Request.Builder requestBuilder = Request.newBuilder();
+
+        // 处理时序指标
+        Map<String, String> labels = new HashMap<>();
+        labels.put(PrometheusLabelConstant.METRIC.getLabel(), metricName);
+        labels.put(PrometheusLabelConstant.TABLE.getLabel(), this.tableName);
+        if (!StringUtils.isBlank(this.timeSeriesName))
+            labels.put(PrometheusLabelConstant.TIME_SERIES.getLabel(), this.timeSeriesName);
+        if (!ObjectUtils.isEmpty(this.labels))
+            labels.putAll(this.labels);
+        // 添加标签按照指标逐条添加至 requestBuilder 符号表（严格交替存储）
+        addSymbol(requestBuilder, labels);
+
+        // 创建 TimeSeries, 相关标签索引需准确对应符号表中位置
+        TimeSeries.Builder tsBuilder = TimeSeries.newBuilder();
+        List<Integer> labelRefs = IntStream.range(0, labels.size() * 2)
+                .boxed()
+                .collect(Collectors.toList());
+        tsBuilder.addAllLabelsRefs(labelRefs);
+
+        // 生成采样点
+        List<Sample> sampleList = new ArrayList<>();
+        for (int i = 0; i < this.doubleValues.size(); i++) {
+            sampleList.add(Sample.newBuilder()
+                    .setValue(this.doubleValues.get(i))
+                    .setTimestamp(this.timestamps.get(i))
+                    .build());
+        }
+        sampleList.sort(Comparator.comparingLong(Sample::getTimestamp));
+
+        tsBuilder.addAllSamples(sampleList);
+        return requestBuilder.addTimeseries(tsBuilder.build()).build();
+    }
+
+    private void addSymbol(Request.Builder requestBuilder, Map<String, String> labels) {
+        labels.forEach((label, value) -> {
+            requestBuilder.addSymbols(label);
+            requestBuilder.addSymbols(value);
+        });
+    }
+
+    //    public Collector transToCollector() {
+//        List<String> labelValues = new ArrayList<>();
+//        labelValues.add(this.tableName);
+//        labelValues.addAll(labels.values());
+//
+//        switch (this.dataType) {
+//            case COUNTER:
+//                Counter counter = Counter.build()
+//                        .name(this.metricName)
+//                        .labelNames(PrometheusLabelConstant.TABLE.getLabel())
+//                        .labelNames(labels.keySet().toArray(new String[0]))
+//                        .help(this.help)
+//                        .register();
+//                // TODO
+//                counter.labels(labelValues.toArray(new String[0])).inc(intValues.get(0));
+//                return counter;
+//            case GAUGE:
+//                Gauge gauge = Gauge.build()
+//                        .name(this.metricName)
+//                        .labelNames(PrometheusLabelConstant.TABLE.getLabel())
+//                        .labelNames(labels.keySet().toArray(new String[0]))
+//                        .help(this.help)
+//                        .register();
+//                gauge.labels(labelValues.toArray(new String[0])).set(doubleValues.get(0));
+//                return gauge;
+//            case HISTOGRAM:
+//            case SUMMARY:
+//            default:
+//                return null;
+//        }
+//    }
 }

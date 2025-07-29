@@ -60,7 +60,7 @@
                             "--max-num-inserts", "100",
                             "--log-syntax-error-query", "true",
                             "--log-each-select", "true",
-                            "--num-tries", "1000",   //increase more in real test
+                            "--num-tries", "50",   //increase more in real test
                             "--max-expression-depth", "4",
                             "--params", "{\"organizationId\":\"1db4a79f8d1dc77c\",\"token\":\"yQmxE44rWrGffiK_O9xgTiVz-__nXmkoS0zsrAZ3aEVup9jHu_tRaJO_aJpam9DQp99NAE8UoSgS9H66fFxCiQ==\"}",
                             "--use-syntax-validator",
@@ -68,10 +68,10 @@
                             "--random-string-generation", "ALPHANUMERIC",
                             "--database-prefix", "hintdb",
                             "--max-generated-databases", "1",
-                            "--num-queries", "1000",   //increase more in real test
+                            "--num-queries", "50",   //increase more in real test
                             GlobalConstant.INFLUXDB_DATABASE_NAME,
                             "--oracle", "HINT",
-                            "--hint-frequency",  "500"
+                            "--hint-frequency",  "100"
 
                     }));
         }

@@ -26,6 +26,10 @@ public class FluxHintInjector {
             Pattern.CASE_INSENSITIVE
     );
 
+    // NEW: match the first projected column (your generator always uses AS ref0)
+    private static final Pattern FIRST_FIELD =
+            Pattern.compile("(?i)^SELECT\\s+([^,]+?)\\s+AS\\s+ref0\\b");
+
     /**
      * Injects a limit() into baseFlux according to a SLIMIT hint.
      * - If hint is null/blank or doesn’t start with “SLIMIT”, returns baseFlux unchanged.
@@ -37,7 +41,26 @@ public class FluxHintInjector {
             return baseQuery;
         }
         String trimmed = baseQuery.trim();
+        String up = hint.trim().toUpperCase(Locale.ROOT);
 
+        //TOP
+        if (up.startsWith("TOP(") && !baseQuery.matches("(?i).*AS ref1.*")) {
+            int n = Integer.parseInt(up.substring(4, up.length() - 1));
+            return baseQuery.replaceFirst(
+                    "(?i)SELECT\\s+([^ ]+)\\s+AS\\s+ref0",
+                    "SELECT TOP($1," + n + ") AS ref0"
+            );
+        }
+        //BOTTOM
+        if (up.startsWith("BOTTOM(") && !baseQuery.matches("(?i).*AS ref1.*")) {
+            int n = Integer.parseInt(up.substring(7, up.length() - 1));
+            return baseQuery.replaceFirst(
+                    "(?i)SELECT\\s+([^ ]+)\\s+AS\\s+ref0",
+                    "SELECT BOTTOM($1," + n + ") AS ref0"
+            );
+        }
+
+        //FILL & SLIMIT
         if (trimmed.toUpperCase(Locale.ROOT).startsWith("SELECT")
                 && !trimmed.contains("|>")) {
             return baseQuery + " " + hint;

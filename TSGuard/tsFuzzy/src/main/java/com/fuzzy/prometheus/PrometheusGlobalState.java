@@ -1,7 +1,7 @@
 package com.fuzzy.prometheus;
 
 import com.fuzzy.SQLGlobalState;
-import com.fuzzy.prometheus.PrometheusOptions.PrometheusOracleFactory;;
+import com.fuzzy.prometheus.PrometheusOptions.PrometheusOracleFactory;
 
 import java.sql.SQLException;
 
@@ -16,4 +16,7 @@ public class PrometheusGlobalState extends SQLGlobalState<PrometheusOptions, Pro
         return getDbmsSpecificOptions().oracles.stream().anyMatch(o -> o == PrometheusOracleFactory.PQS);
     }
 
+    public boolean usesTSAF() {
+        return getDbmsSpecificOptions().oracles.stream().anyMatch(o -> o == PrometheusOracleFactory.TSAF);
+    }
 }

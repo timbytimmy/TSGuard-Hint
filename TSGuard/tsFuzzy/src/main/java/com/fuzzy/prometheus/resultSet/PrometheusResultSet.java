@@ -4,6 +4,7 @@ import cn.hutool.core.util.ObjectUtil;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.benchmark.entity.DBValResultSet;
+import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -14,6 +15,7 @@ public class PrometheusResultSet extends DBValResultSet {
 
     private Object jsonResult;
     private Object curRowRecord;
+    private PrometheusRequestType prometheusRequestType;
 
     public PrometheusResultSet(String db, String table, String jsonResult) {
         super(db, table);
@@ -21,9 +23,10 @@ public class PrometheusResultSet extends DBValResultSet {
         this.jsonResult = jsonObject.get("data");
     }
 
-    public PrometheusResultSet(String jsonResult) {
+    public PrometheusResultSet(String jsonResult, PrometheusRequestType prometheusRequestType) {
         JSONObject jsonObject = JSONObject.parseObject(jsonResult);
         this.jsonResult = jsonObject.get("data");
+        this.prometheusRequestType = prometheusRequestType;
     }
 
     @Override
@@ -39,7 +42,7 @@ public class PrometheusResultSet extends DBValResultSet {
     @Override
     public boolean hasNext() throws SQLException {
         try {
-            cursor ++;
+            cursor++;
             boolean hasValue = hasValue();
             if (!hasValue) return false;
             if (jsonResult instanceof JSONArray) {
@@ -101,37 +104,42 @@ public class PrometheusResultSet extends DBValResultSet {
 
     @Override
     public String getString(int columnIndex) throws SQLException {
-        return null;
-//        return getCurrentValue().getFields().get(columnIndex).getStringValue();
+        // TODO 暂仅支持捞取第一批数据 -> 即精确查询
+        JSONArray values = ((JSONObject) jsonResult).getJSONArray("result").getJSONObject(0)
+                .getJSONArray("value");
+        switch (this.prometheusRequestType) {
+            case INSTANT_QUERY:
+                return values.getString(columnIndex);
+            case RANGE_QUERY:
+                return values.getJSONArray(columnIndex).getString(0);
+            default:
+                throw new SQLException(String.format("prometheusRequestType not support! val:%s", prometheusRequestType));
+        }
     }
 
     @Override
     public int getInt(int columnIndex) throws SQLException {
-        return 0;
-//        return getCurrentValue().getFields().get(columnIndex).getIntV();
+        return Integer.valueOf(getString(columnIndex));
     }
 
     @Override
     public long getLong(int columnIndex) throws SQLException {
-        return 0;
-//        return getCurrentValue().getFields().get(columnIndex).getLongV();
+        return Long.parseLong(getString(columnIndex));
     }
 
     @Override
     public float getFloat(int columnIndex) throws SQLException {
         return 0;
-//        return getCurrentValue().getFields().get(columnIndex).getFloatV();
     }
 
     @Override
     public double getDouble(int columnIndex) throws SQLException {
-        return 0;
-//        return getCurrentValue().getFields().get(columnIndex).getDoubleV();
+        return Double.parseDouble(getString(columnIndex));
     }
 
     @Override
     public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
-        return BigDecimal.valueOf(getLong(columnIndex), scale);
+        return new BigDecimal(getString(columnIndex));
     }
 
 //    public Timestamp getTimestamp() throws SQLException {

@@ -12,8 +12,8 @@ public class HintGenerator {
             "SLIMIT %d SOFFSET %d",
             "FILL(previous)",
             "OFFSET %d",
-//            "TOP(%d)",
-//            "BOTTOM(%d)"
+            "TOP(%d)",
+            "BOTTOM(%d)"
     };
 
     private final Random random = new Random();
@@ -39,8 +39,6 @@ public class HintGenerator {
         return template;
 
     }
-
-
 
     private int randInt(int min, int max) {
         return random.nextInt(max - min + 1) + min;

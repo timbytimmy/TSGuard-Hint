@@ -159,7 +159,8 @@ public class SQLQueryAdapter extends Query<SQLConnection> {
             Main.nrUnsuccessfulActions.addAndGet(1);
             String expectedException = checkException(e);
             globalState.getLogger().writeSyntaxErrorQuery(String.format("Expected SQL error: %s", expectedException));
-            return null;
+
+
         }
     }
 

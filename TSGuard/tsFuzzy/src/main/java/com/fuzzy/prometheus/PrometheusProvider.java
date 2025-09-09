@@ -1,6 +1,6 @@
 package com.fuzzy.prometheus;
 
-import com.alibaba.fastjson.JSONObject;
+import com.benchmark.commonClass.TSFuzzyStatement;
 import com.fuzzy.*;
 import com.fuzzy.common.DBMSCommon;
 import com.fuzzy.common.constant.GlobalConstant;
@@ -11,7 +11,6 @@ import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
 import com.fuzzy.prometheus.gen.PrometheusDatabaseGenerator;
 import com.fuzzy.prometheus.gen.PrometheusInsertGenerator;
 import com.fuzzy.prometheus.gen.PrometheusTableGenerator;
-import com.fuzzy.prometheus.resultSet.PrometheusResultSet;
 import com.google.auto.service.AutoService;
 
 import java.sql.SQLException;
@@ -65,13 +64,14 @@ public class PrometheusProvider extends SQLProviderAdapter<PrometheusGlobalState
 
     @Override
     public void generateDatabase(PrometheusGlobalState globalState) throws Exception {
+        // 查询表数量，不足则继续建表
         while (globalState.getSchema().getDatabaseTables().size() < Randomly.smallNumber() + 1) {
             String tableName = DBMSCommon.createTableName(globalState.getSchema().getMaxTableIndex() + 1);
             SQLQueryAdapter createTable = PrometheusTableGenerator.generate(globalState, tableName);
             globalState.executeStatement(createTable);
         }
 
-        // TODO
+        // 数据生成
         StatementExecutor<PrometheusGlobalState, Action> se = new StatementExecutor<>(globalState, Action.values(),
                 PrometheusProvider::mapActions, (q) -> {
             if (globalState.getSchema().getDatabaseTables().isEmpty()) {
@@ -91,26 +91,24 @@ public class PrometheusProvider extends SQLProviderAdapter<PrometheusGlobalState
 
         PrometheusConnection prometheusConnection = new PrometheusConnection(host, port);
         try (PrometheusStatement s = prometheusConnection.createStatement()) {
-            String databaseMatch = String.format("match[]={database=\"%s\"}", databaseName);
-            PrometheusResultSet prometheusResultSet =
-                    (PrometheusResultSet) s.executeQuery(JSONObject.toJSONString(new PrometheusQueryParam(
-                            PrometheusRequestType.series_query, databaseMatch)));
-            if (prometheusResultSet.hasNext()) {
-                s.execute(JSONObject.toJSONString(new PrometheusQueryParam(
-                        PrometheusRequestType.series_delete, databaseMatch)));
-                // 删除该数据库pushGateway数据
-                // delete http://localhost:9091/api/v1/metrics/job/jobName
-                PrometheusResultSet pushGatewayResult =
-                        (PrometheusResultSet) s.executeQuery(JSONObject.toJSONString(new PrometheusQueryParam(
-                                PrometheusRequestType.push_gateway_series_query)));
-                while (pushGatewayResult.hasNext()) {
-                    JSONObject currentValue = (JSONObject) pushGatewayResult.getCurrentValue();
-                    String jobName = ((JSONObject) currentValue.get("labels")).getString("job");
-                    if (jobName.startsWith(databaseName))
-                        s.execute(JSONObject.toJSONString(new PrometheusQueryParam(
-                                PrometheusRequestType.push_gateway_series_delete, jobName)));
-                }
-            }
+            // example: databaseName{tableName="t0", seriesName="s0"} 10 1745510400000
+
+//            PrometheusResultSet prometheusResultSet = (PrometheusResultSet) s.executeQuery(
+//                    new PrometheusQueryParam(databaseMatch)
+//                            .genPrometheusRequestParam(PrometheusRequestType.SERIES_QUERY));
+            // TODO Prometheus无需删除数据, 每轮测试开始时间点都不一样, 为当前时间回退 30s
+//            if (prometheusResultSet.hasNext()) {
+//                s.execute(JSONObject.toJSONString(new PrometheusQueryParam(
+//                        PrometheusRequestType.series_delete, databaseMatch)));
+
+//                while (pushGatewayResult.hasNext()) {
+//                    JSONObject currentValue = (JSONObject) pushGatewayResult.getCurrentValue();
+//                    String jobName = ((JSONObject) currentValue.get("labels")).getString("job");
+//                    if (jobName.startsWith(databaseName))
+//                        s.execute(JSONObject.toJSONString(new PrometheusQueryParam(
+//                                PrometheusRequestType.push_gateway_series_delete, jobName)));
+//                }
+//            }
 
             // 创建数据库时插入一个初始点即可
             String queryString = PrometheusDatabaseGenerator.generate(globalState, databaseName).getQueryString();
@@ -125,7 +123,14 @@ public class PrometheusProvider extends SQLProviderAdapter<PrometheusGlobalState
 
     @Override
     public void dropDatabase(PrometheusGlobalState globalState) throws Exception {
-
+        // POST /api/v1/admin/tsdb/delete_series
+        String databaseMatch = String.format("match[]={__name__=\"%s\"}", globalState.getDatabaseName());
+        // 删除时间序列
+        try (TSFuzzyStatement s = globalState.getConnection().createStatement()) {
+            String deleteRequest = new PrometheusQueryParam(databaseMatch)
+                    .genPrometheusRequestParam(PrometheusRequestType.SERIES_DELETE);
+            s.execute(deleteRequest);
+        }
     }
 
     @Override

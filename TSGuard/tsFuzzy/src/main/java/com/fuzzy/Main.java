@@ -501,6 +501,10 @@
 
         }
 
+        JCommander jc = commandBuilder.programName("TSGuard").build();
+        jc.parse(args);
+
+
         public static int executeMain(String... args) throws AssertionError {
             List<DatabaseProvider<?, ?, ?>> providers = getDBMSProviders();
             Map<String, DBMSExecutorFactory<?, ?, ?>> nameToProvider = new HashMap<>();
@@ -550,21 +554,22 @@
                 }
             }
 
-            ExecutorService execService = Executors.newFixedThreadPool(options.getNumberConcurrentThreads());
-            DBMSExecutorFactory<?, ?, ?> executorFactory = nameToProvider.get(jc.getParsedCommand());
 
-            if (options.performConnectionTest()) {
-                try {
-                    executorFactory.getDBMSExecutor(options.getDatabasePrefix() + "connectiontest", new Randomly())
-                            .testConnection();
-                } catch (Exception e) {
-                    System.err.println(
-                            "SQLancer failed creating a test database, indicating that SQLancer might have failed connecting to the DBMS. In order to change the username, password, host and port, you can use the --username, --password, --host and --port options.\n\n");
-                    e.printStackTrace();
-                    return options.getErrorExitCode();
-                }
+        if (options.performConnectionTest()) {
+            try {
+                executorFactory.getDBMSExecutor(options.getDatabasePrefix() + "connectiontest", new Randomly())
+                        .testConnection();
+            } catch (Exception e) {
+                System.err.println(
+                        "failed creating a test database, indicating that might have failed connecting to the DBMS. In order to change the username, password, host and port, you can use the --username, --password, --host and --port options.\n\n");
+                return options.getErrorExitCode();
             }
-            final AtomicBoolean someOneFails = new AtomicBoolean(false);
+        }
+        final AtomicBoolean someOneFails = new AtomicBoolean(false);
+
+        for (int i = 0; i < options.getTotalNumberTries(); i++) {
+            String databaseName = generateNameForDatabase(jc.getParsedCommand(), options.getDatabasePrefix(), i);
+
 
             for (int i = 0; i < options.getTotalNumberTries(); i++) {
                 String databaseName;
@@ -711,104 +716,51 @@
                 e.printStackTrace();
             }
 
-            return someOneFails.get() ? options.getErrorExitCode() : 0;
+
+    private static String generateNameForDatabase(String databaseType, String databaseNamePrefix, int iterationNo) {
+        String databaseName;
+
+        if (GlobalConstant.IOTDB_DATABASE_NAME.equalsIgnoreCase(databaseType)) {
+            // IotDB 不支持纯数字作为数据库名
+            databaseName = databaseNamePrefix + "db" + iterationNo;
+        } else if (GlobalConstant.PROMETHEUS_DATABASE_NAME.equalsIgnoreCase(databaseType)) {
+            // Prometheus 要求随机生成数据库名, 基于此使用 Remote Write 时不限于时间范围
+            databaseName = databaseNamePrefix + "_" + iterationNo + "_"
+                    + UUID.randomUUID().toString().replace("-", "_");
+        } else {
+            databaseName = databaseNamePrefix + iterationNo;
         }
+        return databaseName;
+    }
 
-        /**
-         * To register a new provider, it is necessary to implement the DatabaseProvider interface and add an additional
-         * configuration file, see https://docs.oracle.com/javase/9/docs/api/java/util/ServiceLoader.html. Currently, we use
-         * an @AutoService annotation to create the configuration file automatically. This allows SQLancer to pick up
-         * providers in other JARs on the classpath.
-         *
-         * @return The list of service providers on the classpath
-         */
-        static List<DatabaseProvider<?, ?, ?>> getDBMSProviders() {
-            List<DatabaseProvider<?, ?, ?>> providers = new ArrayList<>();
-            @SuppressWarnings("rawtypes")
-            ServiceLoader<DatabaseProvider> loader = ServiceLoader.load(DatabaseProvider.class);
-            for (DatabaseProvider<?, ?, ?> provider : loader) {
-                providers.add(provider);
-            }
-            checkForIssue799(providers);
-            return providers;
+    /**
+     * To register a new provider, it is necessary to implement the DatabaseProvider interface and add an additional
+     * configuration file, see https://docs.oracle.com/javase/9/docs/api/java/util/ServiceLoader.html. Currently, we use
+     * an @AutoService annotation to create the configuration file automatically. This allows TSGuard to pick up
+     * providers in other JARs on the classpath.
+     *
+     * @return The list of service providers on the classpath
+     */
+    static List<DatabaseProvider<?, ?, ?>> getDBMSProviders() {
+        List<DatabaseProvider<?, ?, ?>> providers = new ArrayList<>();
+        @SuppressWarnings("rawtypes")
+        ServiceLoader<DatabaseProvider> loader = ServiceLoader.load(DatabaseProvider.class);
+        for (DatabaseProvider<?, ?, ?> provider : loader) {
+            providers.add(provider);
         }
+        return providers;
+    }
 
-        // see https://github.com/sqlancer/sqlancer/issues/799
-        private static void checkForIssue799(List<DatabaseProvider<?, ?, ?>> providers) {
-            if (providers.isEmpty()) {
-                System.err.println(
-                        "No DBMS implementations (i.e., instantiations of the DatabaseProvider class) were found. You likely ran into an issue described in https://github.com/sqlancer/sqlancer/issues/799. As a workaround, I now statically load all supported providers as of June 7, 2023.");
-                // TODO
-    //            providers.add(new ArangoDBProvider());
-    //            providers.add(new CitusProvider());
-    //            providers.add(new ClickHouseProvider());
-    //            providers.add(new CnosDBProvider());
-    //            providers.add(new CockroachDBProvider());
-    //            providers.add(new CosmosProvider());
-    //            providers.add(new DatabendProvider());
-    //            providers.add(new DorisProvider());
-    //            providers.add(new DuckDBProvider());
-    //            providers.add(new H2Provider());
-    //            providers.add(new HSQLDBProvider());
-    //            providers.add(new MariaDBProvider());
-    //            providers.add(new MaterializeProvider());
-    //            providers.add(new MongoDBProvider());
-    //            providers.add(new MySQLProvider());
-    //            providers.add(new OceanBaseProvider());
-    //            providers.add(new PostgresProvider());
-    //            providers.add(new QuestDBProvider());
-    //            providers.add(new SQLite3Provider());
-    //            providers.add(new StoneDBProvider());
-    //            providers.add(new TiDBProvider());
-    //            providers.add(new TimescaleDBProvider());
-    //            providers.add(new YCQLProvider());
-    //            providers.add(new YSQLProvider());
-            }
-        }
+    private static synchronized void startProgressMonitor() {
+        if (progressMonitorStarted) {
+            /*
+             * it might be already started if, for example, the main method is called multiple times in a test (see
+             * https://github.com/sqlancer/sqlancer/issues/90).
+             */
+            return;
+        } else {
+            progressMonitorStarted = true;
 
-        private static synchronized void startProgressMonitor() {
-            if (progressMonitorStarted) {
-                /*
-                 * it might be already started if, for example, the main method is called multiple times in a test (see
-                 * https://github.com/sqlancer/sqlancer/issues/90).
-                 */
-                return;
-            } else {
-                progressMonitorStarted = true;
-            }
-            final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
-            scheduler.scheduleAtFixedRate(new Runnable() {
-
-                private long timeMillis = System.currentTimeMillis();
-                private long lastNrQueries;
-                private long lastNrDbs;
-
-                {
-                    timeMillis = System.currentTimeMillis();
-                }
-
-                @Override
-                public void run() {
-                    long elapsedTimeMillis = System.currentTimeMillis() - timeMillis;
-                    long currentNrQueries = nrQueries.get();
-                    long nrCurrentQueries = currentNrQueries - lastNrQueries;
-                    double throughput = nrCurrentQueries / (elapsedTimeMillis / 1000d);
-                    long currentNrDbs = nrDatabases.get();
-                    long nrCurrentDbs = currentNrDbs - lastNrDbs;
-                    double throughputDbs = nrCurrentDbs / (elapsedTimeMillis / 1000d);
-                    long successfulStatementsRatio = (long) (100.0 * nrSuccessfulActions.get()
-                            / (nrSuccessfulActions.get() + nrUnsuccessfulActions.get()));
-                    DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-                    Date date = new Date();
-                    System.out.println(String.format(
-                            "[%s] Executed %d queries (%d queries/s; %.2f/s dbs, successful statements: %2d%%). Threads shut down: %d.",
-                            dateFormat.format(date), currentNrQueries, (int) throughput, throughputDbs,
-                            successfulStatementsRatio, threadsShutdown.get()));
-                    timeMillis = System.currentTimeMillis();
-                    lastNrQueries = currentNrQueries;
-                    lastNrDbs = currentNrDbs;
-                }
-            }, 5, 5, TimeUnit.SECONDS);
         }
 
     }

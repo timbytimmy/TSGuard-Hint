@@ -94,6 +94,15 @@ public class IotDBProvider extends SQLProviderAdapter<IotDBGlobalState, IotDBOpt
         // query syntax sequence
         globalState.getLogger().writeSyntaxErrorQuery(
                 IotDBQuerySynthesisFeedbackManager.querySynthesisFeedback.toString());
+
+        //for hint-base
+        int pairs = com.fuzzy.iotdb.hint.IotDBHintStats.PAIRS.get();
+        int matches = com.fuzzy.iotdb.hint.IotDBHintStats.MATCHES.get();
+        int mismatches = com.fuzzy.iotdb.hint.IotDBHintStats.MISMATCHES.get();
+
+        globalState.getLogger().writeSyntaxErrorQuery(
+                String.format("[HINT_SUMMARY] pairs=%d, matches=%d, mismatches=%d", pairs, matches, mismatches));
+
     }
 
     @Override
@@ -111,6 +120,16 @@ public class IotDBProvider extends SQLProviderAdapter<IotDBGlobalState, IotDBOpt
             }
         });
         se.executeStatements();
+        //for logging mismatch
+        try {
+            new com.fuzzy.iotdb.oracle.IotDBHintOracle(globalState).check();
+        } catch (AssertionError ae) {
+            // Mismatch will show baseline/hinted SQL in logs if you added the log line in the oracle.
+            throw ae;
+        } catch (Exception e) {
+            throw new RuntimeException("Hint oracle execution failed", e);
+        }
+
     }
 
     @Override

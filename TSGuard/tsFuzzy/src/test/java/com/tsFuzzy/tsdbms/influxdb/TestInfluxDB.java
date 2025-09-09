@@ -57,7 +57,7 @@
                             "--host", "localhost",
                             "--port", "8086",
                             "--precision", "ms",
-                            "--max-num-inserts", "100",
+                            "--max-num-inserts", "1000",
                             "--log-syntax-error-query", "true",
                             "--log-each-select", "true",
                             "--num-tries", "50",   //increase more in real test
@@ -71,7 +71,7 @@
                             "--num-queries", "50",   //increase more in real test
                             GlobalConstant.INFLUXDB_DATABASE_NAME,
                             "--oracle", "HINT",
-                            "--hint-frequency",  "100"
+                            "--hint-frequency",  "1"
 
                     }));
         }

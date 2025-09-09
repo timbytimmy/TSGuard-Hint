@@ -86,170 +86,155 @@ public class InfluxDBHintOracle implements TestOracle<InfluxDBGlobalState> {
     public void check() throws Exception {
         //test
         String summary = null;
+        int tries = 1000;     //num_tries
+
+        for (int run = 0; run < tries; run++){
+            String hint = null;
+            InfluxDBTSAFOracle tsafOracle = new InfluxDBTSAFOracle(globalState) {
+                {
+                    InfluxDBErrors.addExpressionErrors(errors);
+                }
+                @Override
+                protected void setSequenceRegenerateProbabilityToMax(String sequence) {
+                }
+                @Override
+                protected void incrementQueryExecutionCounter(QueryExecutionStatistical.QueryExecutionType t) {
+                }
+                @Override
+                protected com.fuzzy.common.tsaf.TimeSeriesConstraint genColumnConstraint(
+                        com.fuzzy.influxdb.ast.InfluxDBExpression expr) {
+                    return null; // not used here
+                }
+                @Override
+                protected boolean verifyResultSet(
+                        java.util.Map<Long, java.util.List<java.math.BigDecimal>> expected,
+                        DBValResultSet actual) {
+                    return true;
+                }
+
+                @Override
+                protected boolean containsRows(TimeSeriesConstraint constraint) {
+                    return false;
+                }
+            };
 
 
-
-        InfluxDBTSAFOracle tsafOracle = new InfluxDBTSAFOracle(globalState) {
-            {
-                InfluxDBErrors.addExpressionErrors(errors);
-            }
-            @Override
-            protected void setSequenceRegenerateProbabilityToMax(String sequence) {
-            }
-            @Override
-            protected void incrementQueryExecutionCounter(QueryExecutionStatistical.QueryExecutionType t) {
-            }
-            @Override
-            protected com.fuzzy.common.tsaf.TimeSeriesConstraint genColumnConstraint(
-                    com.fuzzy.influxdb.ast.InfluxDBExpression expr) {
-                return null; // not used here
-            }
-            @Override
-            protected boolean verifyResultSet(
-                    java.util.Map<Long, java.util.List<java.math.BigDecimal>> expected,
-                    DBValResultSet actual) {
-                return true;
+            Query<SQLConnection> baseQuery;
+            while (true) {
+                try {
+                    baseQuery = tsafOracle.getTimeSeriesQuery();
+                    break;
+                } catch (AssertionError ae) {
+                }
             }
 
-            @Override
-            protected boolean containsRows(TimeSeriesConstraint constraint) {
-                return false;
+
+            String baseQueryString = baseQuery.getQueryString(); // like "q=<flux>…"
+            if (!baseQueryString.startsWith("q=")) {
+                continue;
             }
-        };
 
+            globalState.getLogger().writeCurrent(baseQueryString);
 
-        Query<SQLConnection> baseQuery;
-        while (true) {
+            String baseFlux = baseQueryString.substring(2);
+
+            ExpectedErrors noErrors = new ExpectedErrors();
+            DBValResultSet baseRs;
             try {
-                baseQuery = tsafOracle.getTimeSeriesQuery();
-                break;
-            } catch (AssertionError ae) {
+                baseRs = globalState.getManager()
+                        .executeAndGet(new SQLQueryAdapter(baseQueryString, noErrors));
+                if(baseRs == null){
+                    globalState.getLogger().writeSyntaxErrorQuery("NULL result: " + baseQueryString + ";");
+                    appendSummary(hint, 0);
+                    continue;
+                }
+            } catch (Exception e) {
+                globalState.getLogger().writeSyntaxErrorQuery("Invalid query: " + baseQueryString + ";");
+                appendSummary(hint, 0);
+                continue;
             }
-        }
+            List<DBVal> baseline = baseRs.getDBVals();
 
-
-
-
-//        globalState.getLogger()
-//                .writeCurrent("-- HINT begin bucket “" + globalState.getDatabaseName() + "”");
-//
-//        Query<SQLConnection> baseQuery;
-//        try{
-//            baseQuery = tsafOracle.getTimeSeriesQuery();
-//        } catch (Throwable t){
-//            globalState.getLogger()
-//                    .writeCurrent("Hint‐Based: SKIP bucket “" + globalState.getDatabaseName()
-//                            + "” (no TSAL query: " + t.getClass().getSimpleName() + ")");
-//            return;
-//        }
-
-        String baseQueryString = baseQuery.getQueryString(); // like "q=<flux>…"
-        if (!baseQueryString.startsWith("q=")) {
-            return;
-        }
-
-        globalState.getLogger().writeCurrent(baseQueryString);
-
-        String baseFlux = baseQueryString.substring(2);
-
-        ExpectedErrors noErrors = new ExpectedErrors();
-        DBValResultSet baseRs;
-        try {
-            baseRs = globalState.getManager()
-                    .executeAndGet(new SQLQueryAdapter(baseQueryString, noErrors));
-        } catch (Exception e) {
-            globalState.getLogger().writeSyntaxErrorQuery("Invalid query: " + baseQueryString + ";");
-            return;
-        }
-        List<DBVal> baseline = baseRs.getDBVals();
-
-        String hint = hintGen.nextHint();
-
-        //inject hint
-        String hintedFlux = FluxHintInjector.applyHint(baseFlux, hint);
-        String hintedQueryString = "q=" + FluxHintInjector.applyHint(baseFlux, hint);
-
-        //log query with hint
-        globalState.getLogger().writeCurrent(hintedQueryString);
-
-        DBValResultSet actualRs;
-        try {
-            actualRs = globalState.getManager()
-                    .executeAndGet(new SQLQueryAdapter(hintedQueryString, noErrors));
-        } catch (Exception e) {
-            // Syntax error in hintedFlux → record and skip
-            globalState.getLogger().writeSyntaxErrorQuery("Invalid query (hinted): " + hintedQueryString + ";");
-            appendSummary(hint, 0);
-            return;
-        }
-        List<DBVal> actual = actualRs.getDBVals();
-
-        //get expected result
-        List<DBVal> expected;
-        try {
-            expected = ExpectedResultGenerator.apply(baseline, hint);
-        } catch (NullPointerException npe) {
-            appendSummary(hint, 0);
-            return;
-        }
-
-        //compare
-        List<String> mismatches = Collections.emptyList();
-        try {
-            mismatches = ResultComparator.compare(expected, actual);
-        } catch (Exception compareErr) {
-            appendSummary(hint, 0);
-            return;
-        }
-
-//        String summaryLine = String.format(
-//                "%s  hint=<%s>  mismatches=%d",
-//                globalState.getDatabaseName(),
-//                hint,
-//                mismatches.size()
-//        );
-
-//        try{
-//            Files.write(
-//                    CENTRAL_HINT_LOG,
-//                    Collections.singletonList(summaryLine),
-//                    StandardOpenOption.CREATE,
-//                    StandardOpenOption.APPEND
-//            );
-//        } catch (IOException ioe){
-//            log.error("Could not write to hint-mismatches.log", ioe);
-//        }
-
-        if (!mismatches.isEmpty()){
-            log.error("Bucket “{}” – hint “{}” produced unexpected results:",
-                    globalState.getDatabaseName(), hint);
-            mismatches.forEach(m -> log.error("  • " + m));
-            throw new AssertionError("Flux hint mismatch in bucket “"
-                    + globalState.getDatabaseName() + "”");
-        } else {
-            globalState.getLogger()
-                    .writeCurrent("Hint‐Based: no mismatches found in bucket “"
-                            + globalState.getDatabaseName() + "”");
-        }
-
-
-        try {
-            summary = mismatches.isEmpty()
-                    ? "Hint-Based: no mismatches in “" + globalState.getDatabaseName() + "”"
-                    : "Hint-Based: mismatches in “" + globalState.getDatabaseName() + "” → " + mismatches;
-            if (!mismatches.isEmpty()) {
-                throw new AssertionError("Flux hint mismatch");
+            hint = hintGen.nextHint();
+            if(hint == null || hint.trim().isEmpty()){
+                appendSummary(hint, 0);
+                continue;
             }
-        } catch (Throwable t) {
-            // optional: capture exception as part of summary
-            if (summary == null) {
-                summary = "Hint-Based: failed on “"
-                        + globalState.getDatabaseName() + "” – "
-                        + t.getClass().getSimpleName()
-                        + (t.getMessage()==null ? "" : ": "+t.getMessage());
+
+            //inject hint
+            String hintedFlux = FluxHintInjector.applyHint(baseFlux, hint);
+            String hintedQueryString = "q=" + hintedFlux;
+
+            //log query with hint
+            globalState.getLogger().writeCurrent(hintedQueryString);
+
+            DBValResultSet actualRs;
+            try {
+                actualRs = globalState.getManager()
+                        .executeAndGet(new SQLQueryAdapter(hintedQueryString, noErrors));
+                if(actualRs == null){
+                    globalState.getLogger().writeSyntaxErrorQuery("NULL result: " + hintedQueryString);
+                    appendSummary(hint, 0);
+                    continue;
+                }
+            } catch (Exception e) {
+                // Syntax error in hintedFlux → record and skip
+                globalState.getLogger().writeSyntaxErrorQuery("Invalid query (hinted): " + hintedQueryString + ";");
+                appendSummary(hint, 0);
+                continue;
             }
-        } finally {
-            globalState.getLogger().writeCurrent(summary);
+            List<DBVal> actual = actualRs.getDBVals();
+
+            //get expected result
+            List<DBVal> expected;
+            try {
+                expected = ExpectedResultGenerator.apply(baseline, hint);
+            } catch (NullPointerException npe) {
+                appendSummary(hint, 0);
+                continue;
+            }
+
+            //compare
+            List<String> mismatches = Collections.emptyList();
+            try {
+                mismatches = ResultComparator.compare(expected, actual);
+            } catch (Exception compareErr) {
+                appendSummary(hint, 0);
+                continue;
+            }
+
+
+            if (!mismatches.isEmpty()){
+                log.error("Bucket “{}” – hint “{}” produced unexpected results:",
+                        globalState.getDatabaseName(), hint);
+                mismatches.forEach(m -> log.error("  • " + m));
+                throw new AssertionError("Flux hint mismatch in bucket “"
+                        + globalState.getDatabaseName() + "”");
+            } else {
+                globalState.getLogger()
+                        .writeCurrent("Hint‐Based: no mismatches found in bucket “"
+                                + globalState.getDatabaseName() + "”");
+            }
+
+
+            try {
+                summary = mismatches.isEmpty()
+                        ? "Hint-Based: no mismatches in “" + globalState.getDatabaseName() + "”"
+                        : "Hint-Based: mismatches in “" + globalState.getDatabaseName() + "” → " + mismatches;
+                if (!mismatches.isEmpty()) {
+                    throw new AssertionError("Flux hint mismatch");
+                }
+            } catch (Throwable t) {
+                // optional: capture exception as part of summary
+                if (summary == null) {
+                    summary = "Hint-Based: failed on “"
+                            + globalState.getDatabaseName() + "” – "
+                            + t.getClass().getSimpleName()
+                            + (t.getMessage()==null ? "" : ": "+t.getMessage());
+                }
+            } finally {
+                globalState.getLogger().writeCurrent(summary);
+            }
         }
 
     }
@@ -263,10 +248,6 @@ public class InfluxDBHintOracle implements TestOracle<InfluxDBGlobalState> {
     public String getLastQueryString() {
         return null;
     }
-
-
-
-
 
 }
 

@@ -20,4 +20,8 @@ public class IotDBGlobalState extends SQLGlobalState<IotDBOptions, IotDBSchema> 
         return getDbmsSpecificOptions().oracles.stream().anyMatch(o -> o == IotDBOracleFactory.TSAF);
     }
 
+    public boolean usesHINT() {
+        return getDbmsSpecificOptions().oracles.stream().anyMatch(o -> o == IotDBOracleFactory.HINT);
+    }
+
 }

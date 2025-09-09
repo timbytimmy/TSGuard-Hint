@@ -128,26 +128,41 @@ public class SQLQueryAdapter extends Query<SQLConnection> {
         } else {
             s = globalState.getConnection().createStatement();
         }
+
+        final String q = getUnterminatedQueryString(); // no trailing ';'
+        long t0 = System.currentTimeMillis();
+
         DBValResultSet result = null;
         try {
             if (fills.length > 0) {
-                // result = ((PreparedStatement) s).executeQuery();
+                throw new UnsupportedOperationException("executeAndGet with fills not implemented");
             } else {
                 result = s.executeQuery(query);
             }
+
+            long dt = System.currentTimeMillis() - t0;
+            // single success log
+            globalState.getLogger().writeCurrent(q + " -- " + dt + "ms;");
+
             Main.nrSuccessfulActions.addAndGet(1);
-            if (result == null) {
-                return null;
-            }
-            return result;
+            return result; // do not close statement here; caller will consume/close the ResultSet
+
         } catch (Exception e) {
-            s.close();
+            long dt = System.currentTimeMillis() - t0;
+
+            //error log
+            globalState.getLogger().writeCurrent(q + " -- " + dt + "ms; -- ERROR: " + e.getMessage());
+
+            try {
+                s.close();
+            } catch (Exception ignore) { }
             Main.nrUnsuccessfulActions.addAndGet(1);
             String expectedException = checkException(e);
             globalState.getLogger().writeSyntaxErrorQuery(String.format("Expected SQL error: %s", expectedException));
+            return null;
         }
-        return null;
     }
+
 
     @Override
     public boolean couldAffectSchema() {

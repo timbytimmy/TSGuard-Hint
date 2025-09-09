@@ -1170,10 +1170,12 @@ public class IotdbDBApiEntry implements ApiEntry {
     }
 
     public void executeNonQueryStatement(String sql) throws IoTDBConnectionException, StatementExecutionException {
+        log.info("[IOTDB_SESSION_NONQUERY] {}", sql); // to view SELECT log
         this.session.executeNonQueryStatement(sql);
     }
 
     public SessionDataSet executeQueryStatement(String sql) throws IoTDBConnectionException, StatementExecutionException {
+        log.info("[IOTDB_SESSION_QUERY] {}", sql);  //to view SELECT log
         return this.session.executeQueryStatement(sql);
     }
 }

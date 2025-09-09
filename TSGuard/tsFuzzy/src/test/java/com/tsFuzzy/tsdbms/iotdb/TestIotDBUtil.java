@@ -23,8 +23,8 @@ import java.util.List;
 @Slf4j
 public class TestIotDBUtil {
 
-    public static String host = "111.229.183.22";
-    public static int port = 6665;
+    public static String host = "127.0.0.1";
+    public static int port = 6667;
     public static String userName = "root";
     public static String password = "root";
 
@@ -47,11 +47,12 @@ public class TestIotDBUtil {
     @Test
     public void testConnect() throws Exception {
         Session session = new Session.Builder()
-                .host("172.29.185.200")
-                .port(6665).build();
+                .host("127.0.0.1")
+                .port(6667).build();
         session.open();
         session.executeQueryStatement("SHOW DATABASES");
     }
+
 
     @Test
     public void testExecuteQuery() throws Exception {

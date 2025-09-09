@@ -55,7 +55,9 @@ public class InfluxDBInsertGenerator {
     }
 
     private SQLQueryAdapter generateInsert() {
-        if (globalState.usesTSAF()) generateInsertForTSAF();
+        if (globalState.usesTSAF() || globalState.usesHINT()){
+            generateInsertForTSAF();
+        }
         else randomGenerateInsert();
 
         InfluxDBErrors.addInsertUpdateErrors(errors);

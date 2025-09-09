@@ -38,6 +38,7 @@ public class IotDBStatement implements TSFuzzyStatement {
         try {
             if (!apiEntry.isConnected()) open();
             apiEntry.executeNonQueryStatement(sql);
+            log.info("[IOTDB_EXEC_NONQUERY] {}", sql); //to view SELECT log
         } catch (Exception e) {
             throw new SQLException(e.getMessage());
         } finally {
@@ -49,6 +50,7 @@ public class IotDBStatement implements TSFuzzyStatement {
     public DBValResultSet executeQuery(String sql) throws SQLException {
         try {
             if (!apiEntry.isConnected()) open();
+            log.info("[IOTDB_EXEC_QUERY] {}", sql); //to show SELECT log
             return new IotDBResultSet(apiEntry.executeQueryStatement(sql));
         } catch (Exception e) {
             throw new SQLException(e.getMessage());

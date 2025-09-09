@@ -43,8 +43,10 @@ import java.util.stream.Collectors;
 
 @Slf4j
 
+
 public abstract class InfluxDBTSAFOracle
         extends TimeSeriesAlgebraFrameworkBase<InfluxDBGlobalState, InfluxDBRowValue, InfluxDBExpression, SQLConnection> {
+
 
 public class InfluxDBTSAFOracle
         extends TimeSeriesAlgebraFrameworkBase<InfluxDBGlobalState, InfluxDBExpression, SQLConnection> {

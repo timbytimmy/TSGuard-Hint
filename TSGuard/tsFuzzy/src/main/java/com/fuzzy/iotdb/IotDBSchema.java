@@ -378,7 +378,7 @@ public class IotDBSchema extends AbstractSchema<IotDBGlobalState, IotDBTable> {
         public static IotDBDataType getRandom(IotDBGlobalState globalState) {
             if (globalState.usesPQS()) {
                 return Randomly.fromOptions(valuesPQS());
-            } else if (globalState.usesTSAF()) {
+            } else if (globalState.usesTSAF() || globalState.usesHINT()) {
                 return Randomly.fromOptions(valuesTSAF());
             } else {
                 return Randomly.fromOptions(values());

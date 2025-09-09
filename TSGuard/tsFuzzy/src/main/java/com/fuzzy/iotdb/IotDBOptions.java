@@ -6,6 +6,7 @@ import com.fuzzy.DBMSSpecificOptions;
 import com.fuzzy.OracleFactory;
 import com.fuzzy.common.oracle.TestOracle;
 import com.fuzzy.iotdb.IotDBOptions.IotDBOracleFactory;
+import com.fuzzy.iotdb.oracle.IotDBHintOracle;
 import com.fuzzy.iotdb.oracle.IotDBPivotedQuerySynthesisOracle;
 import com.fuzzy.iotdb.oracle.IotDBTSAFOracle;
 
@@ -20,7 +21,7 @@ public class IotDBOptions implements DBMSSpecificOptions<IotDBOracleFactory> {
     public static final int DEFAULT_PORT = 6667;
 
     @Parameter(names = "--oracle")
-    public List<IotDBOracleFactory> oracles = Arrays.asList(IotDBOracleFactory.TSAF);
+    public List<IotDBOracleFactory> oracles = Arrays.asList(IotDBOracleFactory.TSAF, IotDBOracleFactory.HINT);
 
     public enum IotDBOracleFactory implements OracleFactory<IotDBGlobalState> {
 
@@ -46,7 +47,18 @@ public class IotDBOptions implements DBMSSpecificOptions<IotDBOracleFactory> {
             public boolean requiresAllTablesToContainRows() {
                 return true;
             }
-        };
+        },
+        HINT {
+            @Override
+            public TestOracle<IotDBGlobalState> create(IotDBGlobalState globalState) throws SQLException {
+                return new IotDBHintOracle(globalState);
+            }
+            @Override
+            public boolean requiresAllTablesToContainRows() {
+                return true;
+            }
+        }
+
     }
 
     @Override

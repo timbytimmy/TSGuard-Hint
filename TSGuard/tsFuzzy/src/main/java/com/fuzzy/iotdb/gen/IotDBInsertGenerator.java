@@ -39,7 +39,7 @@ public class IotDBInsertGenerator {
         this.table = table;
         String hashKey = generateHashKey(globalState.getDatabaseName(), table.getName());
         if (!isRandomlyGenerateTimestamp.containsKey(hashKey)) {
-            if (globalState.usesTSAF()) isRandomlyGenerateTimestamp.put(hashKey, false);
+            if (globalState.usesTSAF() || globalState.usesHINT()) isRandomlyGenerateTimestamp.put(hashKey, false);
             else isRandomlyGenerateTimestamp.put(hashKey, Randomly.getBoolean());
             lastTimestamp.put(hashKey, globalState.getOptions().getStartTimestampOfTSData());
         }
@@ -58,7 +58,9 @@ public class IotDBInsertGenerator {
         sb.append("INSERT INTO ");
         sb.append(table.getDatabaseName()).append(".").append(table.getName());
 
-        if (globalState.usesTSAF()) generateInsertForTSAF();
+        if (globalState.usesTSAF() || globalState.usesHINT()){
+            generateInsertForTSAF();
+        }
         else generateRandomInsert();
 
         IotDBErrors.addInsertUpdateErrors(errors);

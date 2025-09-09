@@ -471,6 +471,7 @@
                 this.provider = provider;
                 this.options = options;
                 this.command = createCommand();
+
             }
 
             private O createCommand() {
@@ -556,6 +557,7 @@
             }
 
 
+
             ExecutorService execService = Executors.newFixedThreadPool(options.getNumberConcurrentThreads());
             DBMSExecutorFactory<?, ?, ?> executorFactory = nameToProvider.get(jc.getParsedCommand());
 
@@ -571,6 +573,7 @@
                 }
             }
             final AtomicBoolean someOneFails = new AtomicBoolean(false);
+
 
         if (options.performConnectionTest()) {
             try {
@@ -680,6 +683,7 @@
             // TDengine
             // record expression depth
             sb.append(String.format("TDengine Expression iteration depth:%d\n", TDengineQuerySynthesisFeedbackManager.expressionDepth.get()));
+
 
             // query execution statistical
             sb.append(String.format("Query statistics:%s\n", TDengineQuerySynthesisFeedbackManager.queryExecutionStatistical));
@@ -832,6 +836,7 @@
                     lastNrDbs = currentNrDbs;
                 }
             }, 5, 5, TimeUnit.SECONDS);
+
 
     private static String generateNameForDatabase(String databaseType, String databaseNamePrefix, int iterationNo) {
         String databaseName;

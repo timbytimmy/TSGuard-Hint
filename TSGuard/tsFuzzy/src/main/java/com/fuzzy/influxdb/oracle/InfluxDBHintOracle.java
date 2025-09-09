@@ -89,6 +89,7 @@ public class InfluxDBHintOracle implements TestOracle<InfluxDBGlobalState> {
 
 
 
+
         InfluxDBTSAFOracle tsafOracle = new InfluxDBTSAFOracle(globalState) {
             {
                 InfluxDBErrors.addExpressionErrors(errors);
@@ -250,6 +251,7 @@ public class InfluxDBHintOracle implements TestOracle<InfluxDBGlobalState> {
             }
         } finally {
             globalState.getLogger().writeCurrent(summary);
+
         }
 
     }
@@ -263,6 +265,8 @@ public class InfluxDBHintOracle implements TestOracle<InfluxDBGlobalState> {
     public String getLastQueryString() {
         return null;
     }
+
+
 
 
 

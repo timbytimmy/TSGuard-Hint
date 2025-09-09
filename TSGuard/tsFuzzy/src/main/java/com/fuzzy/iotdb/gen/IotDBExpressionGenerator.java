@@ -89,7 +89,8 @@ public class IotDBExpressionGenerator extends UntypedExpressionGenerator<IotDBEx
 
     @Override
     public IotDBExpression generateExpression(int depth) {
-        return null;
+
+        return generateExpression(null, depth);
     }
 
     @Override
@@ -281,7 +282,7 @@ public class IotDBExpressionGenerator extends UntypedExpressionGenerator<IotDBEx
         IotDBDataType[] values;
         if (state.usesPQS()) {
             values = IotDBDataType.valuesPQS();
-        } else if (state.usesTSAF()) {
+        } else if (state.usesTSAF() || state.usesHINT()) {
             // TODO
             values = new IotDBDataType[]{IotDBDataType.INT32};
         } else {
@@ -308,7 +309,9 @@ public class IotDBExpressionGenerator extends UntypedExpressionGenerator<IotDBEx
 
     public IotDBExpression generateConstant(IotDBDataType dataType) {
         // TODO
-        if (state.usesTSAF()) dataType = IotDBDataType.INT32;
+        if (state.usesTSAF() || state.usesHINT()){
+            dataType = IotDBDataType.INT32;
+        }
         switch (dataType) {
             case INT32:
                 return IotDBConstant.createInt32Constant((int) state.getRandomly().getInteger());

@@ -50,7 +50,7 @@ public class TestIotdb {
                         "--timeout-seconds", TestConfig.SECONDS,
                         "--log-syntax-error-query", "true",
                         "--drop-database", "--max-expression-depth", "4",
-                        "--num-tries", "5", //increase in real test
+                        "--num-tries", "3000", //increase in real test
                         "--use-syntax-validator", "--use-syntax-sequence",
                         "--num-threads", "1",
                         "--random-string-generation", "ALPHANUMERIC",
@@ -58,7 +58,7 @@ public class TestIotdb {
                         "--username", "root", "--password", "root",
                         "--database-prefix", "root.",
                         "--max-generated-databases", "1",
-                        "--num-queries", "100" , GlobalConstant.IOTDB_DATABASE_NAME,
+                        "--num-queries", "7000" , GlobalConstant.IOTDB_DATABASE_NAME,
                         "--oracle", "HINT"}));
     }
 

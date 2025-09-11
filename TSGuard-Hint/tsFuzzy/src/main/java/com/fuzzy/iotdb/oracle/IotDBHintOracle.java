@@ -16,6 +16,7 @@ import com.fuzzy.iotdb.ast.*;
 import com.fuzzy.iotdb.feedback.IotDBQuerySynthesisFeedbackManager;
 import com.fuzzy.iotdb.gen.IotDBExpressionGenerator;
 import com.fuzzy.iotdb.gen.IotDBTimeExpressionGenerator;
+import com.fuzzy.iotdb.hint.HintResultRunner;
 import com.fuzzy.iotdb.hint.IotDBHintBuilder;
 import com.fuzzy.iotdb.hint.IotDBResultComparator;
 import com.fuzzy.iotdb.hint.IotDBResultNormalizer;
@@ -64,12 +65,12 @@ public class IotDBHintOracle
             for (String hintedSql : variants) {
                 if (hintedSql.equals(baselineSql)) continue;
 
-                // Force-write the hinted SQL too
-                globalState.getLogger().writeCurrent(hintedSql + " ; /* hinted */");
+                //write hinted query with mark
+                //globalState.getLogger().writeCurrent(hintedSql + " ; /* hinted */");
 
                 try (DBValResultSet hintAny = new SQLQueryAdapter(hintedSql).executeAndGet(globalState)) {
                     IotDBResultSet rsHint = (IotDBResultSet) hintAny;
-                    var nHint = IotDBResultNormalizer.normalize(rsHint);
+                    IotDBResultNormalizer.Normalized nHint = HintResultRunner.runAndNormalize(globalState, hintedSql);
 
                     PAIRS.incrementAndGet();
                     var diff = IotDBResultComparator.compare(nBase, nHint);
@@ -121,8 +122,10 @@ public class IotDBHintOracle
             dataPred = IotDBUnaryNotPrefixOperation.getNotUnaryPrefixOperation(dataPred);
         }
 
+        IotDBColumn timeColumn = new IotDBColumn("time", false, IotDBDataType.INT64);
         IotDBTimeExpressionGenerator timeGen = new IotDBTimeExpressionGenerator(globalState);
-        IotDBExpression timeExpr = timeGen.generateExpression(); // something like time >= ... etc.
+        IotDBExpression timeExpr = timeGen.setColumns(
+                Collections.singletonList(timeColumn)).generateExpression(); // something like time >= ... etc.
         // If time expressions return a boolean, AND them; otherwise, skip
         IotDBExpression result = dataPred;
         if (!ObjectUtils.isEmpty(timeExpr) && timeExpr.getExpectedValue().isBoolean()) {

@@ -41,7 +41,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class IotDBTSAFOracle
-        extends TimeSeriesAlgebraFrameworkBase<IotDBGlobalState, IotDBRowValue, IotDBExpression, SQLConnection> {
+        extends TimeSeriesAlgebraFrameworkBase<IotDBGlobalState, IotDBExpression, SQLConnection> {
 
     // TODO 插入数据空间概率分布
     // 数值和时间戳具备二元函数关系（能否知微见著，反映出各种不规律数值空间？）

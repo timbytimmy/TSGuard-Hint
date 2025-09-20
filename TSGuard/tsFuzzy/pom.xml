@@ -125,23 +125,43 @@
             <artifactId>commons-cli</artifactId>
             <version>1.4</version>
         </dependency>
+
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
-        </dependency>
+
+
+        <!--prometheus-->
         <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-stdlib-jdk8</artifactId>
-            <version>${kotlin.version}</version>
+            <groupId>build.buf.gen</groupId>
+            <artifactId>prometheus_prometheus_protocolbuffers_java</artifactId>
+            <version>31.0.0.1.20250320161912.af2aab87b1b3</version>
         </dependency>
+
+        <!-- HTTP客户端 -->
         <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-test</artifactId>
-            <version>${kotlin.version}</version>
-            <scope>test</scope>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.5.14</version>
+
         </dependency>
     </dependencies>
+
+    <!--prometheus-->
+    <repositories>
+        <repository>
+            <name>Buf Maven Repository</name>
+            <id>buf</id>
+            <url>https://buf.build/gen/maven</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
     <!--maven-shade-plugin插件能够将外部Jar包一并打包至指定模块Jar包内, 运行主类时不会存在找不到外部类错误-->
     <build>

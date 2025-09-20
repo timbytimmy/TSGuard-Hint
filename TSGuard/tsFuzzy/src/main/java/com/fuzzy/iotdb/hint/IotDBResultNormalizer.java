@@ -115,4 +115,8 @@ public final class IotDBResultNormalizer {
     private static String canonBigDecimal(BigDecimal v) {
         return v.round(MC).toPlainString();
     }
+
+    public static Normalized empty() {
+        return new Normalized(java.util.Collections.emptyList(), new java.util.HashMap<>());
+    }
 }

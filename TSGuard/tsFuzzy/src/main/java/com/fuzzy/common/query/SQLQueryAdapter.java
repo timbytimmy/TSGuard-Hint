@@ -142,7 +142,7 @@ public class SQLQueryAdapter extends Query<SQLConnection> {
 
             long dt = System.currentTimeMillis() - t0;
             // single success log
-            globalState.getLogger().writeCurrent(q + " -- " + dt + "ms;");
+            //globalState.getLogger().writeCurrent(q + " -- " + dt + "ms;");
 
             Main.nrSuccessfulActions.addAndGet(1);
             return result; // do not close statement here; caller will consume/close the ResultSet
@@ -158,7 +158,10 @@ public class SQLQueryAdapter extends Query<SQLConnection> {
             } catch (Exception ignore) { }
             Main.nrUnsuccessfulActions.addAndGet(1);
             String expectedException = checkException(e);
+
+
             globalState.getLogger().writeSyntaxErrorQuery(String.format("Expected SQL error: %s", expectedException));
+
 
 
         }

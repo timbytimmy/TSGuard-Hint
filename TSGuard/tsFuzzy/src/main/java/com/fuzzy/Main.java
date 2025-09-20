@@ -730,7 +730,7 @@
 
             // query syntax sequence
             sb.append(InfluxDBQuerySynthesisFeedbackManager.querySynthesisFeedback.toString()).append("\n");
-            try (FileWriter writer = new FileWriter("C:\\Users\\timmy\\Desktop\\TSGuard\\TSGuard-Detecting-Logic-Bugs-in-Time-Series-Management-Systems-via-Time-Series-Algebra\\TSGuard\\tsFuzzy\\logs\\statistic.info")) {
+            try (FileWriter writer = new FileWriter("C:\\Users\\timmy\\Desktop\\TSGuard\\TSGuard-Hint\\TSGuard\\tsFuzzy\\logs\\statistic.info")) {
                 //C:\Users\timmy\Desktop\TSGuard\TSGuard-Detecting-Logic-Bugs-in-Time-Series-Management-Systems-via-Time-Series-Algebra\TSGuard\tsFuzzy\logs
                 writer.write(sb.toString());
             } catch (IOException e) {

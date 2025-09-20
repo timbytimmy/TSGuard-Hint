@@ -9,6 +9,7 @@ import com.fuzzy.common.query.SQLQueryProvider;
 import com.fuzzy.iotdb.feedback.IotDBQuerySynthesisFeedbackManager;
 import com.fuzzy.iotdb.gen.*;
 import com.fuzzy.iotdb.gen.IotDBShowStatementGenerator.ShowStatementType;
+import com.fuzzy.iotdb.hint.IotDBHintStats;
 import com.fuzzy.iotdb.resultSet.IotDBResultSet;
 import com.google.auto.service.AutoService;
 
@@ -99,9 +100,10 @@ public class IotDBProvider extends SQLProviderAdapter<IotDBGlobalState, IotDBOpt
         int pairs = com.fuzzy.iotdb.hint.IotDBHintStats.PAIRS.get();
         int matches = com.fuzzy.iotdb.hint.IotDBHintStats.MATCHES.get();
         int mismatches = com.fuzzy.iotdb.hint.IotDBHintStats.MISMATCHES.get();
+        int engineError = IotDBHintStats.ENGINE_ERRORS.get();
 
         globalState.getLogger().writeSyntaxErrorQuery(
-                String.format("[HINT_SUMMARY] pairs=%d, matches=%d, mismatches=%d", pairs, matches, mismatches));
+                String.format("[HINT_SUMMARY] pairs=%d, matches=%d, mismatches=%d, engine error=%d", pairs, matches, mismatches, engineError));
 
     }
 

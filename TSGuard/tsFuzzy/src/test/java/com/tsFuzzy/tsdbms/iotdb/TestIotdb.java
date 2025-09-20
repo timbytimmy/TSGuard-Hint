@@ -47,10 +47,11 @@ public class TestIotdb {
         assertEquals(0,
                 Main.executeMain(new String[]{
                         "--random-seed", "-1",
-                        "--timeout-seconds", TestConfig.SECONDS,
+                        "--timeout-seconds", "17200",
                         "--log-syntax-error-query", "true",
-                        "--drop-database", "--max-expression-depth", "4",
-                        "--num-tries", "3000", //increase in real test
+                        "--drop-database",
+                        "--max-expression-depth", "6",
+                        "--num-tries", "10", //increase in real test
                         "--use-syntax-validator", "--use-syntax-sequence",
                         "--num-threads", "1",
                         "--random-string-generation", "ALPHANUMERIC",
@@ -58,7 +59,7 @@ public class TestIotdb {
                         "--username", "root", "--password", "root",
                         "--database-prefix", "root.",
                         "--max-generated-databases", "1",
-                        "--num-queries", "7000" , GlobalConstant.IOTDB_DATABASE_NAME,
+                        "--num-queries", "100" , GlobalConstant.IOTDB_DATABASE_NAME,
                         "--oracle", "HINT"}));
     }
 

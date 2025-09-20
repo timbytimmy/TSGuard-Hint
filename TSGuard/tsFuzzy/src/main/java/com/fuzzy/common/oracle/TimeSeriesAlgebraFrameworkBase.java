@@ -38,9 +38,9 @@ public abstract class TimeSeriesAlgebraFrameworkBase<S extends GlobalState<?, ?,
     @Override
     public void check() throws Exception {
         Query<C> timeseriesQuery = getTimeSeriesQuery();
-        if (globalState.getOptions().logEachSelect()) {
-            globalState.getLogger().writeCurrent(timeseriesQuery.getQueryString());
-        }
+//        if (globalState.getOptions().logEachSelect()) {
+//           globalState.getLogger().writeCurrent(timeseriesQuery.getQueryString());
+//        }
 
         boolean pivotRowIsContained = containsRows(timeseriesQuery);
         if (!pivotRowIsContained) {

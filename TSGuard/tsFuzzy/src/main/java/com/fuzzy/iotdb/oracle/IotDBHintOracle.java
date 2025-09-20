@@ -53,10 +53,8 @@ public class IotDBHintOracle
         SQLQueryAdapter baseline = (SQLQueryAdapter) getTimeSeriesQuery();
         String baselineSql = baseline.getQueryString();
 
-        // Force-write the SQL you’re about to run
-        globalState.getLogger().writeCurrent(baselineSql + " ; /* baseline */");
+         globalState.getLogger().writeCurrent(baselineSql + " ; /* baseline */");
 
-        // IMPORTANT: execute via SQLQueryAdapter.executeAndGet so it also logs internally
         try (DBValResultSet baseAny = new SQLQueryAdapter(baselineSql).executeAndGet(globalState)) {
             IotDBResultSet rsBase = (IotDBResultSet) baseAny;
             var nBase = IotDBResultNormalizer.normalize(rsBase);
@@ -65,8 +63,6 @@ public class IotDBHintOracle
             for (String hintedSql : variants) {
                 if (hintedSql.equals(baselineSql)) continue;
 
-                //write hinted query with mark
-                //globalState.getLogger().writeCurrent(hintedSql + " ; /* hinted */");
 
                 try (DBValResultSet hintAny = new SQLQueryAdapter(hintedSql).executeAndGet(globalState)) {
                     IotDBResultSet rsHint = (IotDBResultSet) hintAny;
@@ -132,7 +128,35 @@ public class IotDBHintOracle
             result = new IotDBBinaryLogicalOperation(
                     dataPred, timeExpr, IotDBBinaryLogicalOperation.IotDBBinaryLogicalOperator.AND);
         }
+        //insert in timestamp range
+        long[] win = getKnownTimeWindow();
+        if (win != null) {
+            long lo = win[0], hi = win[1];
+            // choose a sub-window so we don't always scan the full range
+            long a = globalState.getRandomly().getLong(lo, hi);
+            long b = globalState.getRandomly().getLong(lo, hi);
+            long start = Math.min(a, b);
+            long end   = Math.max(a, b);
+
+            IotDBExpression bounded = timeBetween(start, end);
+            result = new IotDBBinaryLogicalOperation(
+                    result, bounded, IotDBBinaryLogicalOperation.IotDBBinaryLogicalOperator.AND);
+        }
         return result;
+    }
+
+    //305 internal error
+    private static boolean isInternalServerError(Throwable t) {
+        while (t != null) {
+            String msg = t.getMessage();
+            if (msg != null) {
+                if (msg.contains("INTERNAL_SERVER_ERROR") || msg.matches("(?s).*\\b305\\b.*")) {
+                    return true;
+                }
+            }
+            t = t.getCause();
+        }
+        return false;
     }
 
     // Base-class hooks
@@ -178,4 +202,30 @@ public class IotDBHintOracle
     protected boolean verifyResultSet(Map<Long, List<BigDecimal>> expected, DBValResultSet result) {
         return true; // comparison happens in check()
     }
+    /** Returns [minTs, maxTs] for the current table based on how we inserted data. */
+    private long[] getKnownTimeWindow() {
+        long minTs = globalState.getOptions().getStartTimestampOfTSData();
+        Long maxTs = com.fuzzy.iotdb.gen.IotDBInsertGenerator.getLastTimestamp(
+                globalState.getDatabaseName(), table.getName());
+        if (maxTs == null || maxTs < minTs) {
+            return null; // we don't know yet; skip bounding
+        }
+        return new long[]{minTs, maxTs};
+    }
+
+    /** Build: time BETWEEN start AND end */
+    private IotDBExpression timeBetween(long start, long end) {
+        IotDBSchema.IotDBColumn timeCol =
+                new IotDBSchema.IotDBColumn("time", false, IotDBSchema.IotDBDataType.INT64);
+        timeCol.setTable(table); // keep table linkage consistent
+        IotDBExpression timeRef = new IotDBColumnReference(timeCol, null);
+
+        return new IotDBBetweenOperation(
+                timeRef,
+                IotDBConstant.createInt64Constant(start),
+                IotDBConstant.createInt64Constant(end),
+                false // NOT BETWEEN? -> false
+        );
+    }
+
 }

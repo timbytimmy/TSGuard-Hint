@@ -1,14 +1,12 @@
 package com.fuzzy.prometheus.gen;
 
-import com.alibaba.fastjson.JSONObject;
 import com.fuzzy.Randomly;
 import com.fuzzy.common.query.ExpectedErrors;
 import com.fuzzy.common.query.SQLQueryAdapter;
 import com.fuzzy.prometheus.PrometheusGlobalState;
 import com.fuzzy.prometheus.PrometheusSchema.PrometheusDataType;
-import com.fuzzy.prometheus.apiEntry.entity.CollectorAttribute;
 import com.fuzzy.prometheus.apiEntry.PrometheusInsertParam;
-import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
+import com.fuzzy.prometheus.apiEntry.entity.CollectorAttribute;
 import com.fuzzy.prometheus.constant.PrometheusLabelConstant;
 
 import java.util.HashMap;
@@ -36,18 +34,16 @@ public class PrometheusDatabaseGenerator {
         String databaseInitLabel = PrometheusLabelConstant.DATABASE_INIT.getLabel();
         CollectorAttribute attribute = new CollectorAttribute();
         attribute.setDataType(PrometheusDataType.COUNTER);
-        attribute.setMetricName(String.format("%s_%s", databaseName, databaseInitLabel));
+        attribute.setMetricName(databaseName);
         attribute.setHelp(String.format("%s.%s.%s", databaseInitLabel, databaseInitLabel, databaseInitLabel));
-        attribute.setDatabaseName(databaseName);
         attribute.setTableName(databaseInitLabel);
-        attribute.setIntValue(1);
+        attribute.defaultValue();
 
         Map<String, CollectorAttribute> collectorMap = new HashMap<>();
         collectorMap.put(attribute.getMetricName(), attribute);
         PrometheusInsertParam insertParam = new PrometheusInsertParam();
-        insertParam.setType(PrometheusRequestType.push_data);
         insertParam.setCollectorList(collectorMap);
-        return new SQLQueryAdapter(JSONObject.toJSONString(insertParam), errors, true);
+        return new SQLQueryAdapter((insertParam.genPrometheusQueryParam()), errors, true);
     }
 
 }

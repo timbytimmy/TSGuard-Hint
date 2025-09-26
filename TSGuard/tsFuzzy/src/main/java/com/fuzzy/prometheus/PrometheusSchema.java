@@ -6,29 +6,45 @@ import com.benchmark.commonClass.TSFuzzyStatement;
 import com.fuzzy.Randomly;
 import com.fuzzy.SQLConnection;
 import com.fuzzy.common.schema.*;
-import com.fuzzy.prometheus.PrometheusSchema.PrometheusTable;
 import com.fuzzy.prometheus.apiEntry.PrometheusQueryParam;
 import com.fuzzy.prometheus.apiEntry.PrometheusRequestType;
 import com.fuzzy.prometheus.apiEntry.entity.PrometheusSeriesResultItem;
+import com.fuzzy.prometheus.ast.PrometheusConstant;
 import com.fuzzy.prometheus.constant.PrometheusLabelConstant;
-import com.fuzzy.prometheus.grpc.PrometheusConstant;
 import com.fuzzy.prometheus.resultSet.PrometheusResultSet;
-import com.fuzzy.prometheus.util.WaitPrometheusScrapeData;
 
 import java.sql.SQLException;
-import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.*;
-import java.util.stream.Collectors;
 
-public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, PrometheusTable> {
+public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, PrometheusSchema.PrometheusTable> {
 
     private static final int NR_SCHEMA_READ_TRIES = 10;
+
+    public enum CommonDataType {
+        INT, DOUBLE, BOOLEAN, NULL, BIGDECIMAL;
+
+        public static CommonDataType getRandom(PrometheusGlobalState globalState) {
+            if (globalState.usesPQS() || globalState.usesTSAF()) {
+                return Randomly.fromOptions(CommonDataType.INT, CommonDataType.DOUBLE);
+            } else {
+                return Randomly.fromOptions(values());
+            }
+        }
+    }
 
     public enum PrometheusDataType {
         COUNTER, GAUGE, HISTOGRAM, SUMMARY;
 
+        public static PrometheusSchema.PrometheusDataType[] valuesPQS() {
+            return new PrometheusSchema.PrometheusDataType[]{GAUGE};
+        }
+
+        public static PrometheusSchema.PrometheusDataType[] valuesTSAF() {
+            return new PrometheusSchema.PrometheusDataType[]{GAUGE};
+        }
+
         public static PrometheusDataType getRandom(PrometheusGlobalState globalState) {
-            if (globalState.usesPQS()) {
+            if (globalState.usesPQS() || globalState.usesTSAF()) {
                 return Randomly.fromOptions(PrometheusDataType.COUNTER, PrometheusDataType.GAUGE);
             } else {
                 return Randomly.fromOptions(values());
@@ -47,6 +63,19 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
             }
         }
 
+        public boolean isInt() {
+            // TODO
+            return true;
+//            switch (this) {
+//                case COUNTER:
+//                case GAUGE:
+//                case HISTOGRAM:
+//                case SUMMARY:
+//                    return true;
+//                default:
+//                    throw new AssertionError(this);
+//            }
+        }
     }
 
     public static class PrometheusColumn extends AbstractTableColumn<PrometheusTable, PrometheusDataType> {
@@ -83,6 +112,13 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
             super(name, databaseName, columns, indexes, false);
         }
 
+        @Override
+        public String selectCountStatement() {
+            String queryBody = String.format("count_over_time(%s{table='%s'}[1h])", this.getDatabaseName(),
+                    this.getSelectCountTableName());
+            return new PrometheusQueryParam(queryBody).genPrometheusRequestParam(PrometheusRequestType.INSTANT_QUERY);
+        }
+
     }
 
     public static final class PrometheusIndex extends TableIndex {
@@ -100,21 +136,19 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
             try {
                 List<PrometheusTable> databaseTables = new ArrayList<>();
                 try (TSFuzzyStatement s = con.createStatement()) {
-                    // 等待创建数据库并被Prometheus抓捕
-                    WaitPrometheusScrapeData.waitPrometheusScrapeData();
-                    String databaseMatch = String.format("match[]={database=\"%s\"}", databaseName);
+                    String databaseMatch = String.format("match[]={__name__=\"%s\"}", databaseName);
                     // 查询数据库结构
                     try (PrometheusResultSet prometheusResultSet = (PrometheusResultSet)
-                            s.executeQuery(JSONObject.toJSONString(new PrometheusQueryParam(
-                                    PrometheusRequestType.series_query, databaseMatch,
-                                    System.currentTimeMillis() / 1000)))) {
+                            s.executeQuery(new PrometheusQueryParam(databaseMatch)
+                                    .genPrometheusRequestParam(PrometheusRequestType.SERIES_QUERY))) {
 
-                        // 将获取数据按照<database, table, column>去重
+                        // 将获取数据按照 <database, table, timeSeries> 去重
                         Set<PrometheusSeriesResultItem> seriesSet = new HashSet<>();
                         while (prometheusResultSet.hasNext()) {
                             Object rowRecord = prometheusResultSet.getCurrentValue();
                             PrometheusSeriesResultItem seriesResultItem =
                                     JSONObject.parseObject(rowRecord.toString(), PrometheusSeriesResultItem.class);
+                            // DatabaseInit 不纳入数据库表数量计算
                             if (seriesResultItem.getTable().equals(PrometheusLabelConstant.DATABASE_INIT.getLabel()))
                                 continue;
 
@@ -127,8 +161,7 @@ public class PrometheusSchema extends AbstractSchema<PrometheusGlobalState, Prom
                         seriesSet.forEach(item -> {
                             if (tableToSeriesMap.containsKey(item.getTable())) {
                                 tableToSeriesMap.get(item.getTable()).add(item.transToColumn());
-                            }
-                            else {
+                            } else {
                                 List<PrometheusColumn> items = new ArrayList<>();
                                 items.add(item.transToColumn());
                                 tableToSeriesMap.put(item.getTable(), items);

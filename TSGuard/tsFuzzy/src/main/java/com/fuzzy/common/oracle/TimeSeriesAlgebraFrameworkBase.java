@@ -10,7 +10,6 @@ import com.fuzzy.TSFuzzyDBConnection;
 import com.fuzzy.common.query.ExpectedErrors;
 import com.fuzzy.common.query.Query;
 import com.fuzzy.common.query.QueryExecutionStatistical;
-import com.fuzzy.common.schema.AbstractRowValue;
 import com.fuzzy.common.tsaf.TimeSeriesConstraint;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @Slf4j
-public abstract class TimeSeriesAlgebraFrameworkBase<S extends GlobalState<?, ?, C>, R extends AbstractRowValue<?, ?, ?>, E, C extends TSFuzzyDBConnection>
+public abstract class TimeSeriesAlgebraFrameworkBase<S extends GlobalState<?, ?, C>, E, C extends TSFuzzyDBConnection>
         implements TestOracle<S> {
 
     protected final ExpectedErrors errors = new ExpectedErrors();

@@ -26,26 +26,25 @@ public final class IotDBHintBuilder {
             out.add(injectWhereTautology(base)); //WHERE TRUE AND (<body>)
             out.add(parenthesizeWhere(base)); // WHERE (<body>)
 
-
-
             WhereParts p = parseWhereParts(base);
             if (p != null) {
-                out.add(p.before + "WHERE (1 = 1) AND (" + p.body + ")" + p.suffix); // WHERE (1 = 1) AND (body)
-                out.add(p.before + "WHERE (time = time) AND (" + p.body + ")" + p.suffix); // WHERE (time = time) AND (body)
-                out.add(p.before + "WHERE (" + p.body + ") AND (" + p.body + ") " + p.suffix); // duplicate predicate
-                out.add(p.before + "WHERE ((" + p.body + ")) " + p.suffix); // deeper parentheses
-                out.add(p.before + "WHERE (((" + p.body + "))) " + p.suffix);
-                out.add(p.before + "WHERE (" + p.body + ") OR (1=0) " + p.suffix); // OR FALSE
                 String bodyPlusZero = addPlusZeroToNumericLiterals(p.body); //identity  WHERE body
-                //out.add(p.before + "WHERE (" + bodyPlusZero + ") " + p.suffix); //already found bug
-                out.add(andTrueAtEnd(p.before, p.body, p.suffix));
                 String swapped = swapTopLevelAndVariant(base);
-                if (swapped != null && !swapped.equals(base)) out.add(swapped); // swap value
                 String flipped = flipEqIfSafeVariant(base);
-                if (flipped != null && !flipped.equals(base)) out.add(flipped); //flip value
-                out.add(p.before + "WHERE (" + p.body + ") OR FALSE" + p.suffix);
-                out.add(notNot(p.before + "WHERE", p.body, p.suffix)); // NOT (NOT)
-                out.add(timeLeNowAnd(p.before + "WHERE ", p.body, p.suffix)); //time before now
+
+                out.add(p.before + "WHERE (1 = 1) AND (" + p.body + ")" + p.suffix);
+                out.add(p.before + "WHERE (time = time) AND (" + p.body + ")" + p.suffix);
+                out.add(p.before + "WHERE (" + p.body + ") AND (" + p.body + ") " + p.suffix);
+                out.add(p.before + "WHERE ((" + p.body + ")) " + p.suffix);
+                out.add(p.before + "WHERE (((" + p.body + "))) " + p.suffix);
+                out.add(andTrueAtEnd(p.before, p.body, p.suffix));
+                if (swapped != null && !swapped.equals(base)) out.add(swapped);
+                if (flipped != null && !flipped.equals(base)) out.add(flipped);
+                out.add(timeLeNowAnd(p.before + "WHERE ", p.body, p.suffix));
+                // FOUND BUG //out.add(p.before + "WHERE (" + p.body + ") OR FALSE" + p.suffix);
+                // FOUND BUG //out.add(p.before + "WHERE (" + p.body + ") OR (1=0) " + p.suffix);
+                // FOUND BUG //out.add(p.before + "WHERE (" + bodyPlusZero + ") " + p.suffix);
+                // FOUND BUG //out.add(notNot(p.before + "WHERE", p.body, p.suffix));
             }
         } else {
             out.add(insertWhereTrue(base));
@@ -287,13 +286,9 @@ public final class IotDBHintBuilder {
         if (m2.matches()) return atom;
         // Otherwise, leave atom untouched
         return atom;
+
+
     }
-
-
-
-
-
-
 
 
 }

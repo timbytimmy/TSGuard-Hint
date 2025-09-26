@@ -9,6 +9,9 @@ import java.util.regex.Pattern;
 public final class IotDBHintBuilder {
     private IotDBHintBuilder() {}
 
+    /* =========================
+     * Constants & Regex helpers
+     * ========================= */
     // case-insensitive WHERE
     private static final Pattern P_HAS_WHERE = Pattern.compile("(?is)\\bWHERE\\b");
     private static final Pattern P_AFTER_WHERE = Pattern.compile("(?is)\\bWHERE\\b\\s*(.*)");
@@ -16,6 +19,19 @@ public final class IotDBHintBuilder {
             "(?is)\\bGROUP\\s+BY\\b|\\bORDER\\s+BY\\b|\\bSLIMIT\\b|\\bLIMIT\\b|\\bOFFSET\\b|\\bALIGN\\s+BY\\s+DEVICE\\b|\\bFILL\\b|\\bHAVING\\b"
     );
 
+    private static final Pattern P_LIT_EQ_COL = Pattern.compile(
+            // literal (number or double-quoted string) on the left, column/path on the right
+            "(?is)^\\s*(?:([-+]?\\d+(?:\\.\\d+)?)|(\"(?:[^\"\\\\]|\\\\.)*\"))\\s*=\\s*([A-Za-z_][A-Za-z0-9_\\.]*?)\\s*$"
+    );
+
+    private static final Pattern P_COL_EQ_LIT = Pattern.compile(
+            // column/path on the left, literal on the right (already preferred)
+            "(?is)^\\s*([A-Za-z_][A-Za-z0-9_\\.]*)\\s*=\\s*((?:[-+]?\\d+(?:\\.\\d+)?)|(?:\"(?:[^\"\\\\]|\\\\.)*\"))\\s*$"
+    );
+
+    /* =========================
+     * Public API
+     * ========================= */
     /** Build multiple semantics-preserving variants that parse reliably in IoTDB (no trailing comments). */
     public static List<String> safeVariants(String sql) {
         if (sql == null) return Collections.emptyList();
@@ -23,31 +39,34 @@ public final class IotDBHintBuilder {
         List<String> out = new ArrayList<>();
 
         if (P_HAS_WHERE.matcher(base).find()) {
-            out.add(injectWhereTautology(base)); //WHERE TRUE AND (<body>)
-            out.add(parenthesizeWhere(base)); // WHERE (<body>)
-
-
+            // WHERE-present variants
+            out.add(injectWhereTautology(base));   // WHERE TRUE AND (<body>)
+            out.add(parenthesizeWhere(base));      // WHERE (<body>)
 
             WhereParts p = parseWhereParts(base);
             if (p != null) {
-                out.add(p.before + "WHERE (1 = 1) AND (" + p.body + ")" + p.suffix); // WHERE (1 = 1) AND (body)
-                out.add(p.before + "WHERE (time = time) AND (" + p.body + ")" + p.suffix); // WHERE (time = time) AND (body)
-                out.add(p.before + "WHERE (" + p.body + ") AND (" + p.body + ") " + p.suffix); // duplicate predicate
-                out.add(p.before + "WHERE ((" + p.body + ")) " + p.suffix); // deeper parentheses
-                out.add(p.before + "WHERE (((" + p.body + "))) " + p.suffix);
-                out.add(p.before + "WHERE (" + p.body + ") OR (1=0) " + p.suffix); // OR FALSE
-                String bodyPlusZero = addPlusZeroToNumericLiterals(p.body); //identity  WHERE body
-                //out.add(p.before + "WHERE (" + bodyPlusZero + ") " + p.suffix); //already found bug
-                out.add(andTrueAtEnd(p.before, p.body, p.suffix));
+                String bodyPlusZero = addPlusZeroToNumericLiterals(p.body); // identity WHERE body
                 String swapped = swapTopLevelAndVariant(base);
-                if (swapped != null && !swapped.equals(base)) out.add(swapped); // swap value
                 String flipped = flipEqIfSafeVariant(base);
-                if (flipped != null && !flipped.equals(base)) out.add(flipped); //flip value
-                out.add(p.before + "WHERE (" + p.body + ") OR FALSE" + p.suffix);
-                out.add(notNot(p.before + "WHERE", p.body, p.suffix)); // NOT (NOT)
-                out.add(timeLeNowAnd(p.before + "WHERE ", p.body, p.suffix)); //time before now
+
+                out.add(p.before + "WHERE (1 = 1) AND (" + p.body + ")" + p.suffix);
+                out.add(p.before + "WHERE (time = time) AND (" + p.body + ")" + p.suffix);
+                out.add(p.before + "WHERE (" + p.body + ") AND (" + p.body + ") " + p.suffix);
+                out.add(p.before + "WHERE ((" + p.body + ")) " + p.suffix);
+                out.add(p.before + "WHERE (((" + p.body + "))) " + p.suffix);
+                out.add(andTrueAtEnd(p.before, p.body, p.suffix));
+                if (swapped != null && !swapped.equals(base)) out.add(swapped);
+                if (flipped != null && !flipped.equals(base)) out.add(flipped);
+                out.add(timeLeNowAnd(p.before + "WHERE ", p.body, p.suffix));
+
+                // FOUND BUG candidates kept as comments:
+                // out.add(p.before + "WHERE (" + p.body + ") OR FALSE" + p.suffix);
+                // out.add(p.before + "WHERE (" + p.body + ") OR (1=0) " + p.suffix);
+                // out.add(p.before + "WHERE (" + bodyPlusZero + ") " + p.suffix);
+                // out.add(notNot(p.before + "WHERE", p.body, p.suffix));
             }
         } else {
+            // No-WHERE variants
             out.add(insertWhereTrue(base));
             out.add(insertWhereExpr(base, "(1 = 1)"));
             out.add(insertWhereExpr(base, "(time = time)"));
@@ -60,6 +79,9 @@ public final class IotDBHintBuilder {
         return new ArrayList<>(set);
     }
 
+    /* =========================
+     * WHERE body transformations
+     * ========================= */
     /** Replace the WHERE body with: TRUE AND (<body>) */
     private static String injectWhereTautology(String sql) {
         Matcher m = P_AFTER_WHERE.matcher(sql);
@@ -85,6 +107,26 @@ public final class IotDBHintBuilder {
         return beforeWhere + "WHERE (" + body + ") AND TRUE" + suffix;
     }
 
+    private static String addPlusZeroToNumericLiterals(String body) {
+        // conservative: only plain decimal integers/floats
+        return body.replaceAll("(?<![\\w.])(\\d+(?:\\.\\d+)?)", "($1+0)");
+    }
+
+    private static String notNot(String beforeWhere, String body, String after) {
+        return beforeWhere + " NOT (NOT (" + body + "))" + after;
+    }
+
+    private static String orFalse(String beforeWhere, String body, String after) {
+        return beforeWhere + " (" + body + ") OR FALSE" + after;
+    }
+
+    private static String timeLeNowAnd(String beforeWhere, String body, String after) {
+        return beforeWhere + " (time <= now()) AND (" + body + ")" + after;
+    }
+
+    /* =========================
+     * Query-level additions (LIMIT/OFFSET/WHERE insertion)
+     * ========================= */
     // Add OFFSET 0 if there's no OFFSET (harmless; stresses planner tail)
     private static String addOffsetZeroIfAbsent(String sql) {
         if (sql.matches("(?is).*\\bOFFSET\\b.*")) return sql;
@@ -108,7 +150,7 @@ public final class IotDBHintBuilder {
         }
     }
 
-    /** Insert WHERE TRUE in a valid place: before GROUP BY / ORDER BY / SLIMIT / LIMIT / OFFSET / ALIGN BY DEVICE / FILL / HAVING; otherwise at end. */
+    /** Insert WHERE TRUE before GROUP BY / ORDER BY / SLIMIT / LIMIT / OFFSET / ALIGN BY DEVICE / FILL / HAVING; otherwise at end. */
     private static String insertWhereTrue(String sql) {
         Matcher m = P_FOLLOWING_CLAUSES.matcher(sql);
         if (m.find()) {
@@ -119,6 +161,9 @@ public final class IotDBHintBuilder {
         }
     }
 
+    /* =========================
+     * WHERE parsing utilities
+     * ========================= */
     /** Safely split the query into: before 'WHERE', the WHERE body, and trailing suffix (GROUP BY / ORDER BY / ...). */
     private static WhereParts parseWhereParts(String sql) {
         Matcher afterWhere = P_AFTER_WHERE.matcher(sql);
@@ -167,24 +212,9 @@ public final class IotDBHintBuilder {
         }
     }
 
-    private static String addPlusZeroToNumericLiterals(String body) {
-        // conservative: only plain decimal integers/floats
-        return body.replaceAll("(?<![\\w.])(\\d+(?:\\.\\d+)?)", "($1+0)");
-    }
-
-    private static String notNot(String beforeWhere, String body, String after) {
-        return beforeWhere + " NOT (NOT (" + body + "))" + after;
-    }
-
-    private static String orFalse(String beforeWhere, String body, String after) {
-        return beforeWhere + " (" + body + ") OR FALSE" + after;
-    }
-
-    private static String timeLeNowAnd(String beforeWhere, String body, String after) {
-        return beforeWhere + " (time <= now()) AND (" + body + ")" + after;
-    }
-
-    //swap value and flip
+    /* =========================
+     * Swap/flip helpers (AND/ = )
+     * ========================= */
     private static List<String> splitTopLevelAnds(String body) {
         List<String> parts = new ArrayList<>();
         int depth = 0, last = 0;
@@ -213,6 +243,37 @@ public final class IotDBHintBuilder {
         if (idx < 0 || idx >= s.length()) return true;
         char ch = s.charAt(idx);
         return !(Character.isLetterOrDigit(ch) || ch == '_');
+    }
+
+    private static String stripOuterParens(String s) {
+        String t = s.trim();
+        while (t.startsWith("(") && t.endsWith(")")) {
+            int depth = 0; boolean ok = true;
+            for (int i = 0; i < t.length(); i++) {
+                char c = t.charAt(i);
+                if (c == '(') depth++;
+                else if (c == ')') { depth--; if (depth < 0) { ok = false; break; } }
+                if (i < t.length() - 1 && depth == 0) { ok = false; break; }
+            }
+            if (!ok) break;
+            t = t.substring(1, t.length() - 1).trim();
+        }
+        return t;
+    }
+
+    /** If atom is 'literal = column', return 'column = literal'; otherwise return atom unchanged. */
+    private static String flipLiteralEqColumn(String atom) {
+        Matcher m1 = P_LIT_EQ_COL.matcher(atom);
+        if (m1.matches()) {
+            String lit = (m1.group(1) != null) ? m1.group(1) : m1.group(2); // number or quoted string
+            String col = m1.group(3);
+            return col + " = " + lit;
+        }
+        // If already 'col = lit', keep it
+        Matcher m2 = P_COL_EQ_LIT.matcher(atom);
+        if (m2.matches()) return atom;
+        // Otherwise, leave atom untouched
+        return atom;
     }
 
     private static String swapTopLevelAndVariant(String sql) {
@@ -247,53 +308,4 @@ public final class IotDBHintBuilder {
         String joined = String.join(" AND ", newAnds);
         return p.before + "WHERE " + joined + p.suffix;
     }
-
-    private static String stripOuterParens(String s) {
-        String t = s.trim();
-        while (t.startsWith("(") && t.endsWith(")")) {
-            int depth = 0; boolean ok = true;
-            for (int i = 0; i < t.length(); i++) {
-                char c = t.charAt(i);
-                if (c == '(') depth++;
-                else if (c == ')') { depth--; if (depth < 0) { ok = false; break; } }
-                if (i < t.length() - 1 && depth == 0) { ok = false; break; }
-            }
-            if (!ok) break;
-            t = t.substring(1, t.length() - 1).trim();
-        }
-        return t;
-    }
-
-    private static final Pattern P_LIT_EQ_COL = Pattern.compile(
-            // literal (number or double-quoted string) on the left, column/path on the right
-            "(?is)^\\s*(?:([-+]?\\d+(?:\\.\\d+)?)|(\"(?:[^\"\\\\]|\\\\.)*\"))\\s*=\\s*([A-Za-z_][A-Za-z0-9_\\.]*?)\\s*$"
-    );
-
-    private static final Pattern P_COL_EQ_LIT = Pattern.compile(
-            // column/path on the left, literal on the right (already preferred)
-            "(?is)^\\s*([A-Za-z_][A-Za-z0-9_\\.]*)\\s*=\\s*((?:[-+]?\\d+(?:\\.\\d+)?)|(?:\"(?:[^\"\\\\]|\\\\.)*\"))\\s*$"
-    );
-
-    /** If atom is 'literal = column', return 'column = literal'; otherwise return atom unchanged. */
-    private static String flipLiteralEqColumn(String atom) {
-        Matcher m1 = P_LIT_EQ_COL.matcher(atom);
-        if (m1.matches()) {
-            String lit = m1.group(1) != null ? m1.group(1) : m1.group(2); // number or quoted string
-            String col = m1.group(3);
-            return col + " = " + lit;
-        }
-        // If already 'col = lit', keep it
-        Matcher m2 = P_COL_EQ_LIT.matcher(atom);
-        if (m2.matches()) return atom;
-        // Otherwise, leave atom untouched
-        return atom;
-    }
-
-
-
-
-
-
-
-
 }

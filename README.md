@@ -8,7 +8,7 @@ new method: give a HINT make it simple
 | 1  | apache/iotdb/issues/16406  | 12 Sep 2025  | verifeid  | 
 | 2  | apache/iotdb/issues/16408  | 12 Sep 2025  | duplicate  | 
 | 3  | apache/iotdb/issues/16437  | 18 Sep 2025  | verified  | 
-| 4  | apache/iotdb/issues/16436  | 18 Sep 2025  | waiting  | 
+| 4  | apache/iotdb/issues/16436  | 18 Sep 2025  | currently not support| 
 | 5  | apache/iotdb/issues/16451  | 20 Sep 2025  | waiting  | 
 | 6  | apache/iotdb/issues/16453  | 22 Sep 2025  | waiting  | 
 | 7  | apache/iotdb/issues/00000  | 00 Sep 2025  | waiting  | 

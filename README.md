@@ -5,10 +5,10 @@ new method: give a HINT make it simple
 
 | id  | link | date | status | 
 | ------------- | ------------- | ------------- | ------------- | 
-| 1  | apache/iotdb/issues/16406  | 12 Sep 2025  | verifeid  | 
+| 1  | apache/iotdb/issues/16406  | 12 Sep 2025  | verified  | 
 | 2  | apache/iotdb/issues/16408  | 12 Sep 2025  | duplicate  | 
 | 3  | apache/iotdb/issues/16437  | 18 Sep 2025  | verified  | 
 | 4  | apache/iotdb/issues/16436  | 18 Sep 2025  | currently not support| 
 | 5  | apache/iotdb/issues/16451  | 20 Sep 2025  | waiting  | 
-| 6  | apache/iotdb/issues/16453  | 22 Sep 2025  | waiting  | 
+| 6  | apache/iotdb/issues/16453  | 22 Sep 2025  | verified  | 
 | 7  | apache/iotdb/issues/00000  | 00 Sep 2025  | waiting  | 

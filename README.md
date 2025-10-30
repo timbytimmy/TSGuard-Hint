@@ -11,4 +11,4 @@ new method: give a HINT make it simple
 | 4  | apache/iotdb/issues/16436  | 18 Sep 2025  | currently not support| 
 | 5  | apache/iotdb/issues/16451  | 20 Sep 2025  | waiting  | 
 | 6  | apache/iotdb/issues/16453  | 22 Sep 2025  | verified  | 
-| 7  | apache/iotdb/issues/00000  | 00 Sep 2025  | waiting  | 
+| 7  | influxdata/influx-cli/issues/567  | 30 Oct 2025  | waiting  | 

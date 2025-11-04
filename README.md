@@ -3,6 +3,11 @@ TSGuard: Detecting Logic Bugs in Time Series Management Systems via Time Series 
 
 new method: give a HINT make it simple
 
+**This project provides the Hint-Based Oracle module that extends TSGuard.
+To use this module, users must obtain TSGuard from the original author.
+This repository does not include or redistribute TSGuard source code.
+
+
 | id  | link | date | status | 
 | ------------- | ------------- | ------------- | ------------- | 
 | 1  | apache/iotdb/issues/16406  | 12 Sep 2025  | verified  | 

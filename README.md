@@ -17,4 +17,4 @@ This repository does not include or redistribute TSGuard source code.
 | 5  | apache/iotdb/issues/16451  | 20 Sep 2025  | waiting  | 
 | 6  | apache/iotdb/issues/16453  | 22 Sep 2025  | verified  | 
 | 7  | influxdata/influx-cli/issues/567  | 30 Oct 2025  | waiting  | 
-| 8  | taosdata/TDengine/issues/33507  |  8 Nov 2025  |  waiting
+| 8  | taosdata/TDengine/issues/33507  |  8 Nov 2025  |  verified  |
